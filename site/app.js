@@ -284,11 +284,19 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
+const APP_VERSION = "2026.11.19-3";
+async function forceUpdate() {
+  toast("מעדכן…");
+  try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
+    if (navigator.serviceWorker) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); } catch (e) { }
+  location.reload();
+}
 function renderPack() {
   const done = store.get("pack", {}), n = PACK.filter((_, i) => done[i]).length;
   return `<section class="group"><h2>רשימת ציוד</h2><div class="progress"><i style="width:${Math.round(n / PACK.length * 100)}%"></i></div>
    <p class="src">${n} מתוך ${PACK.length} נארזו. הסימונים נשמרים רק בטלפון הזה.</p>
-   <div class="pack">${PACK.map((p, i) => `<label for="pk${i}"><input type="checkbox" id="pk${i}" data-i="${i}" ${done[i] ? "checked" : ""}><span>${esc(p)}</span></label>`).join("")}</div></section>`;
+   <div class="pack">${PACK.map((p, i) => `<label for="pk${i}"><input type="checkbox" id="pk${i}" data-i="${i}" ${done[i] ? "checked" : ""}><span>${esc(p)}</span></label>`).join("")}</div></section>
+   <section class="ver"><span>גרסה ${APP_VERSION}</span><button class="btn" id="updbtn" type="button">🔄 לבדוק עדכונים</button></section>`;
 }
 
 let heroEnter = true, lastKey = "";
@@ -310,6 +318,7 @@ function render() {
   open.forEach(([id, o]) => { const el = id && document.getElementById(id); if (el) el.open = o; });
   if (view === "days") { $("#mapbtn").onclick = () => { const m = $("#map"); if (!m.hidden) { m.hidden = true; if (mapInst) { mapInst.remove(); mapInst = null; } } else showMap(d); };
     if (mapOpen && !heroEnter) showMap(d); }
+  if (view === "pack") { const u = $("#updbtn"); if (u) u.onclick = forceUpdate; }
   if (view === "pack") $("#view").querySelectorAll("input").forEach(c => c.onchange = () => { const x = store.get("pack", {}); x[c.dataset.i] = c.checked; store.set("pack", x); render() });
 }
 
