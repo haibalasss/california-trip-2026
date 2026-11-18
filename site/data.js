@@ -60,8 +60,8 @@ const DAYS = [
        note: "חניה חינם לרכב אחד. בצ'ק-אין צריך תעודה מזהה וכרטיס אשראי." }
    ],
    events: [
-     { n: "Lightscape, מסלול אורות חג", w: "San Francisco Botanical Garden", t: "ערב הפתיחה", x: "מיליון נורות לאורך כקילומטר וחצי. כרטיסים ב-gggp.org." },
-     { n: "The Music Man", w: "Orpheum Theatre", t: "20–22 בנובמבר" }
+     { n: "Lightscape, מסלול אורות חג", w: "San Francisco Botanical Garden, Golden Gate Park", t: "ערב הפתיחה, בערב בלבד", x: "מסלול הליכה של כקילומטר וחצי בגן הבוטני, עם מיליון נורות, מיצבי אור ומוזיקה. נכנסים בחלונות זמן, וצריך כרטיסים מראש ב-gggp.org. כ-15 דקות נסיעה מהמלון." },
+     { n: "The Music Man", w: "Orpheum Theatre, Market St", t: "20–22 בנובמבר, הצגת ערב", x: "מחזמר ברודוויי קלאסי ומשפחתי על נוכל מקסים שמגיע לעיירה קטנה ומקים להקת כלי נשיפה. צריך כרטיסים." }
    ] },
 
  { d: "2026-11-21", dow: "שבת", scene: "sf", wx: ["sf"], title: "אלקטרז והמזח", sleep: "Star Motel",
@@ -83,8 +83,8 @@ const DAYS = [
        note: "יוצאים גם בגשם. גודל תיק מקסימלי 40×50 ס\"מ.", countdown: "2026-11-21T10:10:00-08:00" }
    ],
    events: [
-     { n: "Great Dickens Christmas Fair", w: "Cow Palace, Daly City", t: "יום הפתיחה" },
-     { n: "Fall Native Plant Fest", w: "Fort Mason", t: "כניסה חופשית", x: "קרוב למלון" }
+     { n: "Great Dickens Christmas Fair", w: "Cow Palace, Daly City", t: "יום הפתיחה, עד 20.12", x: "יריד חג מקורה שבנוי כמו לונדון של תקופת דיקנס: שחקנים בתלבושות, שירי חג, מופעים, דוכנים ואוכל. כ-20 דקות נסיעה דרומה מהעיר. צריך כרטיסים." },
+     { n: "Fall Native Plant Fest", w: "Fort Mason Community Garden", t: "שבת, כניסה חופשית", x: "פסטיבל קהילתי קטן של צמחים מקומיים בגינה הקהילתית של Fort Mason. יש דוכנים, הסברים ופעילות לילדים. כ-10 דקות הליכה מהמלון." }
    ] },
 
  { d: "2026-11-22", dow: "ראשון", scene: "yos", wx: ["yos"], title: "נוסעים ליוסמיטי", sleep: "Yosemite View Lodge", roads: "yos",
@@ -107,7 +107,7 @@ const DAYS = [
        addr: "11136 Highway 140, El Portal, CA 95318", phone: "+1 209-379-2681",
        facts: [["Booking", S("bk_yos")], ["צ'ק-אין", "מ-16:00"], ["צ'ק-אאוט", "שני 23.11, עד 11:00"], ["פיקדון", "$50, בכרטיס בלבד"]], note: "המפתחות בדלפק הקבלה." }
    ],
-   events: [{ n: "Vintners' Holidays", w: "The Ahwahnee, Yosemite Valley", t: "עד 5.12" }] },
+   events: [{ n: "Vintners' Holidays", w: "The Ahwahnee, Yosemite Valley", t: "עד 5.12", x: "סדרת אירועי יין וארוחות שף במלון ההיסטורי של יוסמיטי. מיועד למבוגרים ובתשלום. גם בלי להשתתף, שווה להציץ ללובי ולאולם האוכל של המלון." }] },
 
  { d: "2026-11-23", dow: "שני", scene: "yos", wx: ["yos", "mry"], title: "בוקר ביוסמיטי, ממשיכים למונטריי", sleep: "Arbor Inn Monterey", roads: "yos",
    stops: [
@@ -127,7 +127,7 @@ const DAYS = [
        facts: [["Booking", S("bk_mry")], ["צ'ק-אין", "15:00–22:00"], ["צ'ק-אאוט", "רביעי 25.11, עד 11:00"], ["פיקדון", "$150"]],
        note: "חניה חינם." }
    ],
-   events: [{ n: "Ice Skating by the Bay", w: "Custom House Plaza", t: "כל יום", x: "5 דקות מהמלון" }] },
+   events: [{ n: "Ice Skating by the Bay", w: "Custom House Plaza, Old Monterey", t: "כל יום עד 3.1", x: "משטח החלקה על הקרח שמוצב בחוץ לעונת החגים, ליד המזח הישן. בדרך כלל אפשר לשכור מחליקיים במקום. פעילות ערב טובה לילדים, 5 דקות מהמלון." }] },
 
  { d: "2026-11-24", dow: "שלישי", scene: "mry", wx: ["mry"], title: "מונטריי וכרמל", sleep: "Arbor Inn Monterey",
    stops: [
@@ -143,7 +143,7 @@ const DAYS = [
      { n: "ארוחת ערב בכרמל", ll: P.oceanave, i: "🍽️" }
    ],
    prep: "מחר: יוצאים מוקדם, עד 08:00. לתדלק הערב, כי בביג סור הדלק יקר ונדיר.",
-   events: [{ n: "Ice Skating by the Bay", w: "Custom House Plaza", t: "כל יום" }] },
+   events: [{ n: "Ice Skating by the Bay", w: "Custom House Plaza, Old Monterey", t: "כל יום עד 3.1", x: "משטח החלקה על הקרח שמוצב בחוץ לעונת החגים, ליד המזח הישן. בדרך כלל אפשר לשכור מחליקיים במקום. פעילות ערב טובה לילדים." }] },
 
  { d: "2026-11-25", dow: "רביעי", scene: "bs", wx: ["bs", "la"], title: "Highway 1 עד Venice", sleep: "Modern Venice Beach Stay", roads: "hwy1",
    stops: [
@@ -165,7 +165,7 @@ const DAYS = [
        facts: [["Booking", S("bk_la")], ["צ'ק-אין", "16:00–23:30"], ["חניה", "$20 ללילה בהזמנה מראש"], ["פיקדון", "$250"]],
        note: "הוראות הכניסה מגיעות רק דרך האפליקציה של Booking. בתוספת $25 להגעה אחרי 23:00. ביציאה משאירים את המפתחות ואת השלט על השולחן." }
    ],
-   events: [{ n: "LA Zoo Lights", w: "Griffith Park", t: "מ-20.11", x: "רחוק מ-Venice" }] },
+   events: [{ n: "LA Zoo Lights", w: "Los Angeles Zoo, Griffith Park", t: "כל ערב מ-20.11", x: "מסלול אורות חג בגן החיות של לוס אנג'לס: מנהרות אור, הקרנות של בעלי חיים ומוזיקה. פתוח רק בערב וצריך כרטיסים. כ-45 דקות נסיעה מ-Venice." }] },
 
  { d: "2026-11-26", dow: "חמישי", fam: "b", scene: "home", wx: ["la"], title: "חוזרים הביתה", sleep: "בבית 🏠",
    stops: [
