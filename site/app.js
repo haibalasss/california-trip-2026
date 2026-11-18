@@ -102,15 +102,30 @@ async function loadWeather() {
   try {
     const out = {};
     await Promise.all(Object.entries(LOCS).map(async ([k, v]) => {
-      const u = `https://api.open-meteo.com/v1/forecast?latitude=${v.ll[0]}&longitude=${v.ll[1]}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=America%2FLos_Angeles&start_date=2026-11-20&end_date=2026-11-29`;
+      const u = `https://api.open-meteo.com/v1/forecast?latitude=${v.ll[0]}&longitude=${v.ll[1]}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=America%2FLos_Angeles&start_date=2026-11-20&end_date=2026-11-29`;
       const r = await fetch(u, { signal: tmo(6000) }); if (!r.ok) throw 0; const j = await r.json();
       j.daily.time.forEach((t, i) => { if (j.daily.temperature_2m_max[i] == null) return;
-        out[t + "|" + k] = { c: j.daily.weather_code[i], hi: Math.round(j.daily.temperature_2m_max[i]), lo: Math.round(j.daily.temperature_2m_min[i]), p: j.daily.precipitation_probability_max[i] }; });
+        out[t + "|" + k] = { c: j.daily.weather_code[i], hi: Math.round(j.daily.temperature_2m_max[i]), lo: Math.round(j.daily.temperature_2m_min[i]), p: j.daily.precipitation_probability_max[i], wd: j.daily.wind_speed_10m_max ? Math.round(j.daily.wind_speed_10m_max[i]) : null }; });
     }));
     WXLIVE = out; WXTIME = new Date(); if (view === "days") render();
   } catch (e) { }
 }
 const fF = c => Math.round(c * 9 / 5 + 32);
+/* What to wear, derived from the day's forecast (live when available) */
+function dress(w) {
+  const snow = (w.c >= 71 && w.c <= 77) || w.c >= 85, rain = (w.c >= 51 && w.c <= 67) || (w.c >= 80 && w.c <= 82) || w.c >= 95 || w.p >= 50;
+  let base;
+  if (snow || w.hi <= 7) base = "מעיל חם, כובע צמר, כפפות ונעליים סגורות שלא נרטבות. להתלבש בשכבות";
+  else if (w.hi <= 13) base = "מעיל או פליז מעל שכבה ארוכה, ומכנסיים ארוכים";
+  else if (w.hi <= 18) base = "שכבות: חולצה ארוכה וסווטשירט או ז'קט קל" + (w.lo <= 10 ? ", ומעיל לערב" : "");
+  else if (w.hi <= 24) base = "חולצה קצרה, ומעיל קל או סווטשירט לערב";
+  else base = "בגדים קלים וכובע";
+  const add = [];
+  if (rain && !snow) add.push("מעיל גשם או מטרייה");
+  if (w.wd != null && w.wd >= 30) add.push("שכבה חוסמת רוח");
+  if (w.c <= 1 && w.hi >= 16) add.push("משקפי שמש וקרם הגנה");
+  return base + (add.length ? ". להוסיף: " + add.join(", ") : "") + ".";
+}
 const wxFor = (date, loc) => (WXLIVE && WXLIVE[date + "|" + loc]) || WXSTATIC[date + "|" + loc];
 
 /* ---------- flights ---------- */
@@ -174,7 +189,7 @@ function wxHTML(d) {
     const w = wxFor(d.d, l); if (!w) return ""; const [ic, txt] = wmo(w.c);
     const bad = (w.c >= 71 && w.c <= 77) || w.c >= 85 || w.p >= 70; const tip = WXTIP[d.d + "|" + l];
     return `<div class="wxrow${bad ? " bad" : ""}"><div class="wxi" aria-hidden="true">${ic}</div>
-    <div class="wxt"><b>${esc(LOCS[l].n)} · ${esc(txt)}</b>${tip ? `<span>${esc(tip)}</span>` : ""}<span>גשם ${w.p != null ? w.p + "%" : "–"}</span></div>
+    <div class="wxt"><b>${esc(LOCS[l].n)} · ${esc(txt)}</b>${tip ? `<span>${esc(tip)}</span>` : ""}<span>גשם ${w.p != null ? w.p + "%" : "–"}${w.wd != null ? ` · רוח עד ${w.wd} קמ"ש` : ""}</span><span class="dress"><b>👕 מה ללבוש:</b> ${esc(dress(w))}</span></div>
     <div class="wxn"><b>${w.hi}° / ${w.lo}°</b><span>${fF(w.hi)}°F / ${fF(w.lo)}°F</span></div></div>`
   }).join("");
   const ll = LOCS[d.wx[d.wx.length - 1]].ll, ss = sunset(d.d, ll[0], ll[1]);
