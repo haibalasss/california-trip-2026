@@ -196,7 +196,7 @@ details.around[open] summary::after{content:"－"}
 
 <script>
 /* Encrypted with AES-GCM; key derived from the family password via PBKDF2-SHA256. The password itself is not stored anywhere in this page. */
-const VAULT = {"v":1,"iter":600000,"salt":"KdbU7djsLfrWa8A9TEqn5Q==","iv":"Oxjta4K+zXyV1guP","ct":"RrBayKqZMjhb9OyiEqrJycbRgwfyUYhZok5kui+9OIqbIqQ8nQpAGefuRqHAMVKW86paV4diegD5ZLtG94U8Gs7grTFv2bJIvyvm61RZrnfFoqM+Q4Z7wRfPWE89AmahO2TnD4IxXg4GGqOkP6L+YE6cst7dE3V+su96sLiEcNzsVzAYx4efCeHJzMYiHxvS2gKFIKJKGbJpaJNvnAegY3lEVhgTOpVvwiEkj/zST/vdSiWOXzHurnmcF3Qo1bczbSelJTnpY/QevsgPwVTcXYPfIktLXFDubUH+f1tuW8pEaLYF+FUrHYwMTr5jRgNU2YvjQq/Zi8WhTt+R4iinPJLSAcDjiqkMKemar3UWS2MWImgToj2dc2hoArgwSFAA2hYWZmtJbdho70UM/MqBf+/99Z1eJ0Ds6R1h1uiaOQPSYfyWEWTTonWqrOm9dg5VzFnTzeDLt9NcamgzwwaKIlT1Ipa6crwW2ISteStPRHdeHlcdCXQLQZHbgLmDEsKjzqFlrmIkakEXUGX/m53jejmXB3HervtBPrRQhWAsJAoqExkrboTSyBPo2Lo6xQ7T/rHhABCq5Zpv5k609AZqC6u6yQFcl19+IhYrAr0MfcmN"};
+const VAULT = {"v":1,"iter":600000,"salt":"34eEuJ6eQ62IJlagtJ1Azg==","iv":"oH5JqzBxYjB+kyys","ct":"jqTlyCk98j9PejA8DJhD4Vq2Y+FPmAfrEq4K1oAGV+RwlwJ80zfRDSU441JqCedBGIw1S/wdKylkiS+jnJyYgfDVYrTxkRRfbdM3sO56ZO/PV/ttbgd253dgt2fHRi8THVyeH2w4hb9WP8n+55QctLdqRBGKegp8TD/Zz+u5s5WsbUWtqwxNiOEGdLELmpZf5Rcr9kWnV+ajxL9Ubg3M4rWqKo44gc49izxXmRycEltsxwBMPR/VZfGELLLNWxPPt8t2EGiPp24rfY1QaaAshTEJ/o4eeFHWfvr7PoQPGG78Jcgy5UxIIdYgC6ib7W9IWAPToJZ4FgNzmryV/X5quH5HQuCFYvjoJyxueW3XKD7SC9uu/4Y0lDSKKlps9Qc8X+YvRszpwuSe53Zay/sMnUVb6LR66diM/u6rQ2l/KjAnD6dHBDe4/sNAH5S9Tmk7wwLey7dPGC0nQtZ5qk1lxK736ulfPpqtbn6M+2wo7kGdutS24zJ3AboyLMtjx0D/7VIjclppcb/tPGLJsfsDchgJmkkGXeh6hk4Q+ts5WX4fDwzSFqVoqyE4eZ4WmK/3V10G3KRYI+riNHzamqOlUWjKxkbGywBLdXkbaOaHCaws"};
 
 const ALERTS = [
   {lvl:"danger", t:"<b>סופת חורף ביוסמיטי ביום ראשון 22.11.</b> לפי התחזית יהיו גשם ושלג, ובלילה שלג. הפארק מבקש להצטייד בשרשראות. כשאוספים את הרכב, לשאול את Hertz אם מותר לשים עליו שרשראות. Highway 140 הוא הכביש הפחות מושלג. מצב הכבישים: ‎+1 209-372-0200."},
@@ -350,7 +350,7 @@ async function loadWeather(){
     const out={};
     await Promise.all(Object.entries(LOCS).map(async([k,v])=>{
       const u=`https://api.open-meteo.com/v1/forecast?latitude=${v.ll[0]}&longitude=${v.ll[1]}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=America%2FLos_Angeles&start_date=2026-11-20&end_date=2026-11-26`;
-      const r=await fetch(u); if(!r.ok) throw 0; const j=await r.json();
+      const r=await fetch(u,{signal:AbortSignal.timeout?AbortSignal.timeout(6000):undefined}); if(!r.ok) throw 0; const j=await r.json();
       j.daily.time.forEach((t,i)=>{ if(j.daily.temperature_2m_max[i]==null) return;
         out[t+"|"+k]={c:j.daily.weather_code[i],hi:Math.round(j.daily.temperature_2m_max[i]),lo:Math.round(j.daily.temperature_2m_min[i]),p:j.daily.precipitation_probability_max[i]}; });
     }));
@@ -362,7 +362,7 @@ const f = c=>Math.round(c*9/5+32);
 /* Flight status: flights.json is written by a scheduled GitHub Action (AeroDataBox). */
 let FLIGHTS=null;
 async function loadFlights(){
-  try{ const r=await fetch("flights.json?t="+Date.now(),{cache:"no-store"}); if(!r.ok) return; FLIGHTS=await r.json(); render(); }catch(e){}
+  try{ const r=await fetch("flights.json?t="+Date.now(),{cache:"no-store",signal:AbortSignal.timeout?AbortSignal.timeout(5000):undefined}); if(!r.ok) return; FLIGHTS=await r.json(); render(); }catch(e){}
 }
 const STATUS_HE={Expected:"בזמן",Scheduled:"מתוכננת",Delayed:"מעוכבת",Boarding:"עלייה למטוס",GateClosed:"השער נסגר",Departed:"המריאה",EnRoute:"באוויר",Approaching:"בנחיתה",Arrived:"נחתה",Canceled:"בוטלה",CanceledUncertain:"ייתכן שבוטלה",Diverted:"הוסטה",Unknown:"לא ידוע"};
 const hhmm = s=>s?String(s).slice(11,16):"";
@@ -557,7 +557,7 @@ function render(){
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{view=t.dataset.view;store.set("view",view);render();window.scrollTo({top:0})});
 render();
-tryStoredKey(); loadWeather(); loadFlights();
+requestAnimationFrame(()=>setTimeout(()=>{ tryStoredKey(); loadWeather(); loadFlights(); },0));
 setInterval(()=>{ loadFlights(); if(view==="days"&&$("#unlock").hidden) render(); },5*60000);
 setInterval(loadWeather,60*60000);
 </script>

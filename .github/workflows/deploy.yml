@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "*/20 * * * *"   # flight status refresh; skipped outside the trip window
+    - cron: "*/15 * * * *"   # flight status refresh; skipped outside the trip window
   workflow_dispatch:
 
 permissions:
@@ -41,8 +41,7 @@ jobs:
 
       - name: Fetch flight status
         if: steps.win.outputs.skip != '1'
-        env:
-          AERODATABOX_KEY: ${{ secrets.AERODATABOX_KEY }}
+        continue-on-error: true
         run: node scripts/flights.mjs site/flights.json
 
       - uses: actions/configure-pages@v5
@@ -56,3 +55,19 @@ jobs:
       - id: deployment
         if: steps.win.outputs.skip != '1'
         uses: actions/deploy-pages@v4
+
+  # On every push: check that flight status can be read at all (green = works, red = source blocked).
+  probe-flights:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Read flight status (FlightAware / FlightStats)
+        env:
+          PROBE: "1"
+        run: node scripts/flights.mjs
