@@ -326,4 +326,8 @@ render();
 requestAnimationFrame(() => setTimeout(() => { tryStoredKey(); loadWeather(); loadFlights(); }, 0));
 setInterval(() => { loadFlights(); if (view === "days" && $("#unlock").hidden && $("#map").hidden) render(); }, 5 * 60000);
 setInterval(loadWeather, 60 * 60000);
-if ("serviceWorker" in navigator && location.protocol === "https:" && location.hostname.endsWith("github.io")) navigator.serviceWorker.register("sw.js").catch(() => { });
+if ("serviceWorker" in navigator && location.protocol === "https:" && location.hostname.endsWith("github.io")) {
+  const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => r.update()).catch(() => { });
+}
