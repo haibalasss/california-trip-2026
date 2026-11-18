@@ -1,0 +1,58 @@
+name: Deploy trip site
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "*/20 * * * *"   # flight status refresh; skipped outside the trip window
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Trip window check
+        id: win
+        run: |
+          d=$(TZ=America/Los_Angeles date +%F)
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" && ( "$d" < "2026-11-19" || "$d" > "2026-11-26" ) ]]; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.win.outputs.skip != '1'
+
+      - uses: actions/setup-node@v4
+        if: steps.win.outputs.skip != '1'
+        with:
+          node-version: 20
+
+      - name: Fetch flight status
+        if: steps.win.outputs.skip != '1'
+        env:
+          AERODATABOX_KEY: ${{ secrets.AERODATABOX_KEY }}
+        run: node scripts/flights.mjs site/flights.json
+
+      - uses: actions/configure-pages@v5
+        if: steps.win.outputs.skip != '1'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.win.outputs.skip != '1'
+        with:
+          path: site
+
+      - id: deployment
+        if: steps.win.outputs.skip != '1'
+        uses: actions/deploy-pages@v4
