@@ -284,12 +284,83 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.19-3";
+const APP_VERSION = "2026.11.19-5";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
     if (navigator.serviceWorker) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); } catch (e) { }
   location.reload();
+}
+/* ---------- clothes: morning / evening outfits and a per-person packing count ---------- */
+const CL = { tee: "חולצה קצרה", long: "חולצה ארוכה", sweat: "סווטשירט / פליז", light: "ז'קט קל, חוסם רוח", warm: "מעיל חם", rainc: "מעיל גשם", pants: "מכנסיים ארוכים", shorts: "מכנסיים קצרים", hat: "כובע צמר וכפפות" };
+function outfit(T, w) {
+  const snow = (w.c >= 71 && w.c <= 77) || w.c >= 85, rain = (w.c >= 51 && w.c <= 67) || (w.c >= 80 && w.c <= 82) || w.c >= 95 || w.p >= 50;
+  let k;
+  if (snow || T <= 5) k = ["long", "sweat", "warm", "pants", "hat"];
+  else if (T <= 11) k = ["long", "sweat", "light", "pants"];
+  else if (T <= 16) k = ["long", "sweat", "pants"];
+  else if (T <= 21) k = ["tee", "pants"];
+  else k = ["tee", "shorts"];
+  if (rain && !snow) k.push("rainc");
+  if (w.wd != null && w.wd >= 30 && !k.includes("warm") && !k.includes("light")) k.push("light");
+  return { T, k, rain, snow };
+}
+function dayOutfits(d) {
+  const wa = wxFor(d.d, d.wx[0]), wp = wxFor(d.d, d.wx[d.wx.length - 1]);
+  const home = /בבית/.test(d.sleep);
+  return {
+    am: wa ? outfit(Math.round(wa.lo + (wa.hi - wa.lo) * .6), wa) : null, wa,
+    pm: wp && !home ? outfit(Math.round(wp.lo + (wp.hi - wp.lo) * .25), wp) : null, wp
+  };
+}
+function packTotals(ds) {
+  const n = ds.length, o = ds.map(dayOutfits), has = k => o.some(x => (x.am && x.am.k.includes(k)) || (x.pm && x.pm.k.includes(k)));
+  const cnt = k => o.filter(x => x.am && x.am.k.includes(k)).length + o.filter(x => x.pm && x.pm.k.includes(k)).length;
+  const wet = o.some(x => (x.am && (x.am.rain || x.am.snow)) || (x.pm && (x.pm.rain || x.pm.snow)));
+  const pantsDays = o.filter(x => (x.am && x.am.k.includes("pants")) || (x.pm && x.pm.k.includes("pants"))).length;
+  const sweatDays = o.filter(x => (x.am && x.am.k.includes("sweat")) || (x.pm && x.pm.k.includes("sweat"))).length;
+  const rows = [
+    ["tee", "חולצות קצרות", cnt("tee"), "אחת לכל סט חם"],
+    ["long", "חולצות ארוכות", cnt("long"), "אחת לכל סט קר, בוקר וערב"],
+    ["sweat", "סווטשירט / פליז", sweatDays ? (sweatDays >= 4 ? 2 : 1) : 0, "שכבה חמה לבוקר ולערב"],
+    ["pants", "מכנסיים ארוכים", pantsDays ? Math.max(1, Math.ceil(pantsDays / 2)) : 0, "זוג לכל יומיים"],
+    ["shorts", "מכנסיים קצרים", Math.min(cnt("shorts"), 2), ""],
+    ["warm", "מעיל חם", has("warm") ? 1 : 0, "ליוסמיטי"],
+    ["light", "ז'קט קל, חוסם רוח", has("light") ? 1 : 0, "לסירה ולערבים"],
+    ["rainc", "מעיל גשם", has("rainc") ? 1 : 0, ""],
+    ["hat", "כובע צמר וכפפות", has("hat") ? 1 : 0, ""],
+    ["under", "תחתונים", n + 2, `${n} ליום ועוד 2 ספייר`],
+    ["socks", "זוגות גרביים", n + 2 + (wet ? 2 : 0), `${n} ליום ועוד ${wet ? "4 ספייר, כולל 2 לגשם או לשלג" : "2 ספייר"}`],
+    ["pj", "פיג'מות", n - 1 >= 5 ? 2 : 1, ""],
+    ["shoes", "נעלי הליכה סגורות", 1, ""],
+    ["shoes2", "זוג נעליים נוסף", wet ? 1 : 0, "לימים רטובים"]
+  ];
+  return rows.filter(r => r[2] > 0);
+}
+function outfitLine(o) { return o.k.map(k => CL[k]).join(" · "); }
+function renderClothes() {
+  const ds = daysFor(fam), rows = packTotals(ds), done = store.get("clothes:" + fam, {});
+  const total = rows.reduce((a, r) => a + r[2], 0);
+  return `<div class="perperson"><span class="pp-ic" aria-hidden="true">👤</span><div><b>כל הכמויות הן לאדם אחד</b><span>כופלים במספר האנשים במשפחה. החישוב הוא ל-${ds.length} ימים של משפחת ${FAMILIES[fam]}, לפי התחזית${WXLIVE ? " החיה" : ""}, בלי כביסה בדרך.</span></div></div>
+   <details class="more" id="cl-assume" open><summary>איך חישבתי</summary><ul class="assume">
+     <li><b>לכל יום שני סטים:</b> סט לבוקר וסט לערב. כל סט נבחר לפי התחזית של אותו יום ואותו מקום${WXLIVE ? " (תחזית חיה)" : ""}.</li>
+     <li><b>טמפרטורה לכל סט:</b> בבוקר לפי שעות הצהריים, בערב לפי שעות הערב הקרירות.</li>
+     <li><b>מתחת ל-5° או בשלג:</b> חולצה ארוכה, פליז, מעיל חם, כובע וכפפות.</li>
+     <li><b>6°–11°:</b> חולצה ארוכה, פליז וז'קט קל. <b>12°–16°:</b> חולצה ארוכה ופליז. <b>17°–21°:</b> חולצה קצרה ומכנסיים ארוכים. <b>מעל 21°:</b> קצר.</li>
+     <li><b>גשם:</b> מוסיפים מעיל גשם. <b>רוח חזקה:</b> מוסיפים שכבה חוסמת רוח.</li>
+     <li><b>חולצה נקייה לכל סט,</b> כלומר שתיים ביום. מכנסיים: זוג לכל יומיים. מעילים ופליזים חוזרים.</li>
+     <li><b>תחתונים וגרביים:</b> זוג לכל יום ועוד 2 ספייר. בימים רטובים עוד 2 זוגות גרביים.</li>
+     <li>אין כביסה בדרך. הבגדים שלובשים בטיסה נכללים בספירה.</li></ul></details>
+   <section class="group"><h2>מה לארוז <small>לאדם אחד</small></h2>
+   <div class="ctotals">${rows.map(([k, l, c, x]) => `<label class="ct${done[k] ? " ok" : ""}" for="cl-${k}"><input type="checkbox" id="cl-${k}" data-c="${k}" ${done[k] ? "checked" : ""}>
+     <span class="ct-n">${c}</span><span class="ct-l"><b>${l}</b>${x ? `<small>${esc(x)}</small>` : ""}</span><span class="ct-pp">לאדם</span></label>`).join("")}</div>
+   <p class="src">סה"כ ${total} פריטים לאדם. בגדים שלובשים בטיסה נכללים בספירה.</p></section>
+   <section class="group"><h2>תלבושות לפי יום</h2>
+   ${ds.map(d => { const o = dayOutfits(d), w = o.wa;
+     return `<article class="oday"><div class="od-h"><b>${d.dow} ${+d.d.slice(8)}.11</b><span>${esc(LOCS[d.wx[0]].n)}${d.wx.length > 1 ? " ← " + esc(LOCS[d.wx[d.wx.length - 1]].n) : ""}</span>${w ? `<span class="od-w">${wmo(w.c)[0]} ${w.hi}°/${w.lo}°</span>` : ""}</div>
+       ${o.am ? `<div class="od-r"><span class="od-t">☀️ בוקר <small>~${o.am.T}°</small></span><span>${outfitLine(o.am)} · תחתונים וגרביים</span></div>` : ""}
+       ${o.pm ? `<div class="od-r"><span class="od-t">🌙 ערב <small>~${o.pm.T}°</small></span><span>${outfitLine(o.pm)}</span></div>` : `<div class="od-r"><span class="od-t">🌙 ערב</span><span>בבית</span></div>`}
+     </article>` }).join("")}</section>`;
 }
 function renderPack() {
   const done = store.get("pack", {}), n = PACK.filter((_, i) => done[i]).length;
@@ -314,10 +385,11 @@ function render() {
   const open = [...document.querySelectorAll("details")].map(x => [x.id, x.open]);
   const mapOpen = !$("#map")?.hidden;
   if (mapInst) { mapInst.remove(); mapInst = null; }
-  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : renderPack();
+  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : renderPack();
   open.forEach(([id, o]) => { const el = id && document.getElementById(id); if (el) el.open = o; });
   if (view === "days") { $("#mapbtn").onclick = () => { const m = $("#map"); if (!m.hidden) { m.hidden = true; if (mapInst) { mapInst.remove(); mapInst = null; } } else showMap(d); };
     if (mapOpen && !heroEnter) showMap(d); }
+  if (view === "clothes") $("#view").querySelectorAll("input[data-c]").forEach(c => c.onchange = () => { const x = store.get("clothes:" + fam, {}); x[c.dataset.c] = c.checked; store.set("clothes:" + fam, x); render() });
   if (view === "pack") { const u = $("#updbtn"); if (u) u.onclick = forceUpdate; }
   if (view === "pack") $("#view").querySelectorAll("input").forEach(c => c.onchange = () => { const x = store.get("pack", {}); x[c.dataset.i] = c.checked; store.set("pack", x); render() });
 }

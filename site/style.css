@@ -219,3 +219,26 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .wxt .dress{color:var(--ink);font-size:13px;margin-top:3px;line-height:1.45}
 .wxt .dress b{font-weight:500}
 .ver{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+
+/* clothes */
+.perperson{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;background:var(--bridge);color:#fff;border-radius:var(--r);padding:12px 14px}
+.perperson .pp-ic{font-size:26px}
+.perperson b{display:block;font-family:var(--f-display);font-size:18px}
+.perperson span{font-size:13px;opacity:.95}
+.group h2 small{font-family:var(--f-body);font-size:12.5px;font-weight:700;color:var(--bridge);background:var(--bridge-soft);border-radius:999px;padding:2px 8px;margin-inline-start:6px;vertical-align:middle}
+.ctotals{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.ct{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;position:relative}
+.ct input{position:absolute;opacity:0;pointer-events:none}
+.ct-n{font-family:var(--f-display);font-size:26px;font-weight:800;color:var(--sea);font-variant-numeric:tabular-nums;min-width:1.4em;text-align:center}
+.ct-l{display:grid;min-width:0}.ct-l b{font-weight:500;font-size:14px}.ct-l small{font-size:11.5px;color:var(--muted)}
+.ct-pp{font-size:10.5px;font-weight:700;color:var(--bridge);align-self:start}
+.ct.ok{background:var(--ok-soft);border-color:var(--ok)}.ct.ok .ct-n{color:var(--ok)}.ct.ok .ct-l b{text-decoration:line-through}
+.ct:has(input:focus-visible){outline:2px solid var(--bridge)}
+.oday{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px}
+.od-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font-size:13px;color:var(--muted)}
+.od-h b{font-family:var(--f-display);color:var(--ink);font-size:15px}.od-w{margin-inline-start:auto;font-variant-numeric:tabular-nums;color:var(--ink)}
+.od-r{display:grid;grid-template-columns:78px 1fr;gap:8px;font-size:13.5px}
+.od-t{color:var(--muted);font-size:12.5px}.od-t small{font-variant-numeric:tabular-nums}
+.tab{padding-inline:8px}
+.assume{margin:0;padding-inline-start:18px;display:grid;gap:5px;font-size:13.5px}
+.assume b{font-weight:500}
