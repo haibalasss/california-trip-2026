@@ -284,7 +284,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.19-5";
+const APP_VERSION = "2026.11.19-7";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -292,7 +292,7 @@ async function forceUpdate() {
   location.reload();
 }
 /* ---------- clothes: morning / evening outfits and a per-person packing count ---------- */
-const CL = { tee: "חולצה קצרה", long: "חולצה ארוכה", sweat: "סווטשירט / פליז", light: "ז'קט קל, חוסם רוח", warm: "מעיל חם", rainc: "מעיל גשם", pants: "מכנסיים ארוכים", shorts: "מכנסיים קצרים", hat: "כובע צמר וכפפות" };
+const CL = { shell: "מעיל גשם דק", tee: "חולצה קצרה", long: "חולצה ארוכה", sweat: "סווטשירט / פליז", light: "מעיל גשם דק (כחוסם רוח)", warm: "מעיל פוך", rainc: "מעיל גשם דק", pants: "מכנסיים ארוכים", shorts: "מכנסיים קצרים", hat: "כובע צמר וכפפות" };
 function outfit(T, w) {
   const snow = (w.c >= 71 && w.c <= 77) || w.c >= 85, rain = (w.c >= 51 && w.c <= 67) || (w.c >= 80 && w.c <= 82) || w.c >= 95 || w.p >= 50;
   let k;
@@ -313,53 +313,62 @@ function dayOutfits(d) {
     pm: wp && !home ? outfit(Math.round(wp.lo + (wp.hi - wp.lo) * .25), wp) : null, wp
   };
 }
+/* Capsule packing: one carry-on per person, no laundry. Layers are reused; the bulkiest items are worn on the plane. */
 function packTotals(ds) {
-  const n = ds.length, o = ds.map(dayOutfits), has = k => o.some(x => (x.am && x.am.k.includes(k)) || (x.pm && x.pm.k.includes(k)));
-  const cnt = k => o.filter(x => x.am && x.am.k.includes(k)).length + o.filter(x => x.pm && x.pm.k.includes(k)).length;
-  const wet = o.some(x => (x.am && (x.am.rain || x.am.snow)) || (x.pm && (x.pm.rain || x.pm.snow)));
-  const pantsDays = o.filter(x => (x.am && x.am.k.includes("pants")) || (x.pm && x.pm.k.includes("pants"))).length;
-  const sweatDays = o.filter(x => (x.am && x.am.k.includes("sweat")) || (x.pm && x.pm.k.includes("sweat"))).length;
-  const rows = [
-    ["tee", "חולצות קצרות", cnt("tee"), "אחת לכל סט חם"],
-    ["long", "חולצות ארוכות", cnt("long"), "אחת לכל סט קר, בוקר וערב"],
-    ["sweat", "סווטשירט / פליז", sweatDays ? (sweatDays >= 4 ? 2 : 1) : 0, "שכבה חמה לבוקר ולערב"],
-    ["pants", "מכנסיים ארוכים", pantsDays ? Math.max(1, Math.ceil(pantsDays / 2)) : 0, "זוג לכל יומיים"],
-    ["shorts", "מכנסיים קצרים", Math.min(cnt("shorts"), 2), ""],
-    ["warm", "מעיל חם", has("warm") ? 1 : 0, "ליוסמיטי"],
-    ["light", "ז'קט קל, חוסם רוח", has("light") ? 1 : 0, "לסירה ולערבים"],
-    ["rainc", "מעיל גשם", has("rainc") ? 1 : 0, ""],
-    ["hat", "כובע צמר וכפפות", has("hat") ? 1 : 0, ""],
-    ["under", "תחתונים", n + 2, `${n} ליום ועוד 2 ספייר`],
-    ["socks", "זוגות גרביים", n + 2 + (wet ? 2 : 0), `${n} ליום ועוד ${wet ? "4 ספייר, כולל 2 לגשם או לשלג" : "2 ספייר"}`],
-    ["pj", "פיג'מות", n - 1 >= 5 ? 2 : 1, ""],
-    ["shoes", "נעלי הליכה סגורות", 1, ""],
-    ["shoes2", "זוג נעליים נוסף", wet ? 1 : 0, "לימים רטובים"]
+  const n = ds.length, o = ds.map(dayOutfits);
+  const sets = o.flatMap(x => [x.am, x.pm].filter(Boolean));
+  const has = k => sets.some(t => t.k.includes(k));
+  const warmDays = o.filter(x => x.am && x.am.k.includes("tee")).length;
+  const cold = sets.some(t => t.snow || t.T <= 5);
+  const tops = Math.ceil(n * 0.75);                       // a shirt is worn ~1.3 days: morning and evening, sometimes the next morning
+  const short = warmDays ? Math.min(warmDays, 2) : 0;
+  const shell = has("rainc") || has("light");
+  const worn = [
+    ["tee", "חולצה קצרה", 1, "בפלורידה חם"], ["pants", "מכנסיים ארוכים", 1, "במטוס קר"], ["shoes", "נעלי הליכה עמידות למים", 1, "הנעליים הכבדות עליך"]
   ];
-  return rows.filter(r => r[2] > 0);
+  const bag = [
+    ["long", "חולצות ארוכות", Math.max(tops - 1 - (short > 1 ? 1 : 0), 1), "כל חולצה משמשת לבוקר ולערב"],
+    ["tee", "חולצות קצרות", short > 1 ? 1 : 0, "לימים החמים"],
+    ["pants", "מכנסיים ארוכים", 2, "ועוד זוג אחד עליך = 3"],
+    ["sweat", "פליז / סווטשירט", has("sweat") ? 1 : 0, "על היד כשיוצאים מהמטוס בסן פרנסיסקו"],
+    ["warm", "מעיל פוך דחיס", has("warm") ? 1 : 0, "נדחס לשקית קטנה. ליוסמיטי ולערבים הקרים"],
+    ["shell", "מעיל גשם דק", shell ? 1 : 0, "משמש גם כחוסם רוח"],
+    ["hat", "כובע צמר וכפפות", has("hat") ? 1 : 0, ""],
+    ["under", "תחתונים", n + 1, `${n} ליום ועוד ספייר אחד`],
+    ["socks", "זוגות גרביים", n + 1, `${n} ליום ועוד ספייר${cold ? ", אחד מהם צמר ליוסמיטי" : ""}`],
+    ["pj", "פיג'מות", n > 7 ? 2 : 1, ""]
+  ];
+  return { worn: worn.filter(r => r[2] > 0), bag: bag.filter(r => r[2] > 0) };
 }
-function outfitLine(o) { return o.k.map(k => CL[k]).join(" · "); }
+function outfitLine(o) { const k = o.k.includes("rainc") ? o.k.filter(x => x !== "light") : o.k; return k.map(x => CL[x]).join(" · "); }
+function eveningLine(am, pm) {
+  if (!am) return outfitLine(pm);
+  const extra = pm.k.filter(k => !am.k.includes(k) && !["tee", "long", "pants", "shorts"].includes(k));
+  const swapLegs = pm.k.includes("pants") && am.k.includes("shorts");
+  return "כמו בבוקר" + (extra.length || swapLegs ? ", ועוד " + [...extra.map(k => CL[k]), ...(swapLegs ? ["מכנסיים ארוכים"] : [])].join(" · ") : "");
+}
 function renderClothes() {
-  const ds = daysFor(fam), rows = packTotals(ds), done = store.get("clothes:" + fam, {});
-  const total = rows.reduce((a, r) => a + r[2], 0);
-  return `<div class="perperson"><span class="pp-ic" aria-hidden="true">👤</span><div><b>כל הכמויות הן לאדם אחד</b><span>כופלים במספר האנשים במשפחה. החישוב הוא ל-${ds.length} ימים של משפחת ${FAMILIES[fam]}, לפי התחזית${WXLIVE ? " החיה" : ""}, בלי כביסה בדרך.</span></div></div>
-   <details class="more" id="cl-assume" open><summary>איך חישבתי</summary><ul class="assume">
-     <li><b>לכל יום שני סטים:</b> סט לבוקר וסט לערב. כל סט נבחר לפי התחזית של אותו יום ואותו מקום${WXLIVE ? " (תחזית חיה)" : ""}.</li>
-     <li><b>טמפרטורה לכל סט:</b> בבוקר לפי שעות הצהריים, בערב לפי שעות הערב הקרירות.</li>
-     <li><b>מתחת ל-5° או בשלג:</b> חולצה ארוכה, פליז, מעיל חם, כובע וכפפות.</li>
-     <li><b>6°–11°:</b> חולצה ארוכה, פליז וז'קט קל. <b>12°–16°:</b> חולצה ארוכה ופליז. <b>17°–21°:</b> חולצה קצרה ומכנסיים ארוכים. <b>מעל 21°:</b> קצר.</li>
-     <li><b>גשם:</b> מוסיפים מעיל גשם. <b>רוח חזקה:</b> מוסיפים שכבה חוסמת רוח.</li>
-     <li><b>חולצה נקייה לכל סט,</b> כלומר שתיים ביום. מכנסיים: זוג לכל יומיים. מעילים ופליזים חוזרים.</li>
-     <li><b>תחתונים וגרביים:</b> זוג לכל יום ועוד 2 ספייר. בימים רטובים עוד 2 זוגות גרביים.</li>
-     <li>אין כביסה בדרך. הבגדים שלובשים בטיסה נכללים בספירה.</li></ul></details>
-   <section class="group"><h2>מה לארוז <small>לאדם אחד</small></h2>
-   <div class="ctotals">${rows.map(([k, l, c, x]) => `<label class="ct${done[k] ? " ok" : ""}" for="cl-${k}"><input type="checkbox" id="cl-${k}" data-c="${k}" ${done[k] ? "checked" : ""}>
-     <span class="ct-n">${c}</span><span class="ct-l"><b>${l}</b>${x ? `<small>${esc(x)}</small>` : ""}</span><span class="ct-pp">לאדם</span></label>`).join("")}</div>
-   <p class="src">סה"כ ${total} פריטים לאדם. בגדים שלובשים בטיסה נכללים בספירה.</p></section>
+  const ds = daysFor(fam), t = packTotals(ds), done = store.get("clothes:" + fam, {});
+  const bagN = t.bag.reduce((a, r) => a + r[2], 0);
+  const row = (grp) => ([k, l, c, x]) => { const id = grp + "-" + k; return `<label class="ct${done[id] ? " ok" : ""}" for="cl-${id}"><input type="checkbox" id="cl-${id}" data-c="${id}" ${done[id] ? "checked" : ""}>
+     <span class="ct-n">${c}</span><span class="ct-l"><b>${l}</b>${x ? `<small>${esc(x)}</small>` : ""}</span><span class="ct-pp">לאדם</span></label>`; };
+  return `<div class="perperson"><span class="pp-ic" aria-hidden="true">👤</span><div><b>כל הכמויות הן לאדם אחד</b><span>טרולי אחד לכל אחד, בלי כביסה. ${ds.length} ימים של משפחת ${FAMILIES[fam]}, לפי התחזית${WXLIVE ? " החיה" : ""}.</span></div></div>
+   <details class="more" id="cl-assume"><summary>איך חישבתי</summary><ul class="assume">
+     <li><b>טרולי אחד לאדם, בלי כביסה.</b> לכן ממחזרים כל מה שאפשר.</li>
+     <li><b>חולצה משמשת ליום שלם:</b> בבוקר ובערב. בערב רק מוסיפים מעליה שכבה. יוצא בערך 3 חולצות לכל 4 ימים.</li>
+     <li><b>3 זוגות מכנסיים לכל הטיול,</b> אחד מהם עליך.</li>
+     <li><b>שכבות שחוזרות כל יום:</b> פליז אחד, מעיל פוך דחיס אחד, ומעיל גשם דק שמשמש גם כחוסם רוח.</li>
+     <li><b>טסים מפלורידה,</b> אז בטיסה לובשים חולצה קצרה ומכנסיים ארוכים. את הנעליים הכבדות נועלים. המעיל והפליז נכנסים לטרולי, ולכן כדאי מעיל פוך דחיס.</li>
+     <li><b>תחתונים וגרביים לא ממחזרים:</b> זוג לכל יום ועוד ספייר אחד.</li>
+     <li><b>לילדים הקטנים:</b> כדאי להוסיף חולצה ומכנסיים רזרביים לבוץ, למים ולחוף.</li></ul></details>
+   <section class="group"><h2>✈️ עליך בטיסה <small>לאדם אחד</small></h2><div class="ctotals">${t.worn.map(row("w")).join("")}</div></section>
+   <section class="group"><h2>🧳 בטרולי <small>לאדם אחד</small></h2><div class="ctotals">${t.bag.map(row("b")).join("")}</div>
+   <p class="src">סה"כ ${bagN} פריטים בטרולי לאדם, ועוד הבגדים שעליך בטיסה.</p></section>
    <section class="group"><h2>תלבושות לפי יום</h2>
    ${ds.map(d => { const o = dayOutfits(d), w = o.wa;
      return `<article class="oday"><div class="od-h"><b>${d.dow} ${+d.d.slice(8)}.11</b><span>${esc(LOCS[d.wx[0]].n)}${d.wx.length > 1 ? " ← " + esc(LOCS[d.wx[d.wx.length - 1]].n) : ""}</span>${w ? `<span class="od-w">${wmo(w.c)[0]} ${w.hi}°/${w.lo}°</span>` : ""}</div>
-       ${o.am ? `<div class="od-r"><span class="od-t">☀️ בוקר <small>~${o.am.T}°</small></span><span>${outfitLine(o.am)} · תחתונים וגרביים</span></div>` : ""}
-       ${o.pm ? `<div class="od-r"><span class="od-t">🌙 ערב <small>~${o.pm.T}°</small></span><span>${outfitLine(o.pm)}</span></div>` : `<div class="od-r"><span class="od-t">🌙 ערב</span><span>בבית</span></div>`}
+       ${o.am ? `<div class="od-r"><span class="od-t">☀️ בוקר <small>~${o.am.T}°</small></span><span>${outfitLine(o.am)}</span></div>` : ""}
+       ${o.pm ? `<div class="od-r"><span class="od-t">🌙 ערב <small>~${o.pm.T}°</small></span><span>${eveningLine(o.am, o.pm)}</span></div>` : `<div class="od-r"><span class="od-t">🌙 ערב</span><span>בבית</span></div>`}
      </article>` }).join("")}</section>`;
 }
 function renderPack() {
