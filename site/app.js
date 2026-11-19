@@ -221,6 +221,24 @@ function itemHTML(it) {
    ${it.fl ? flightBox(it.fl) : ""}${facts}${seats}${it.note ? `<div class="note">${esc(it.note)}</div>` : ""}${famNote}
    ${acts.length ? `<div class="actions">${acts.join("")}</div>` : ""}</article>`;
 }
+/* Check-in reminder: JetBlue opens online check-in 24h before departure */
+const CHECKINS = [
+  { fl: "B6 377", dep: "2026-11-20T08:45:00-05:00", route: "פורט לודרדייל ← סן פרנסיסקו", when: "שישי 20.11, 08:45 (שעון פלורידה)" },
+  { fl: "B6 1700", dep: "2026-11-26T08:30:00-08:00", route: "לוס אנג'לס ← פורט לודרדייל", when: "חמישי 26.11, 08:30" }
+];
+function checkinHTML() {
+  if (fam !== "b") return "";
+  const now = Date.now(), done = store.get("checkin", {});
+  return CHECKINS.map(c => {
+    const dep = new Date(c.dep).getTime(), open = dep - 24 * 3600e3;
+    if (done[c.fl] || now >= dep - 60 * 60e3 || now < open - 24 * 3600e3) return "";
+    if (now < open) return `<div class="ci soon"><b>✈️ הצ'ק-אין ל-JetBlue ${c.fl.slice(3)} נפתח בעוד ${untilText(new Date(open).toISOString())}</b><span>${c.route} · ${c.when}</span></div>`;
+    return `<section class="ci open" aria-label="צ'ק-אין"><b>✈️ הצ'ק-אין לטיסה פתוח: JetBlue ${c.fl.slice(3)}</b><span>${c.route} · ${c.when}. ההמראה בעוד ${untilText(c.dep)}.</span>
+      <span>עושים צ'ק-אין לכל 5 הנוסעים באפליקציית JetBlue או באתר. צריך את קוד ההזמנה ואת שם המשפחה.</span>
+      <div class="actions"><a class="btn primary" href="https://www.jetblue.com/" target="_blank" rel="noopener">jetblue.com</a>
+        <span class="ci-code">קוד ההזמנה: ${secret(S("jb"))}</span><button class="btn" data-ci="${c.fl}">✓ עשינו צ'ק-אין</button></div></section>`;
+  }).join("");
+}
 function bannerHTML() {
   if (fam !== "b" || !FLIGHTS || !FLIGHTS.flights) return "";
   return Object.entries(FLIGHTS.flights).filter(([, x]) => flightBad(x)).map(([fl, x]) =>
@@ -259,7 +277,7 @@ function renderDay() {
   const items = (d.items || []).filter(forFam), alerts = ALERTS.filter(forFam), showAlerts = dayIdx === 0 || d.d === today;
   const prep = d.prep && (typeof d.prep === "string" ? d.prep : d.prep[fam]);
   const roads = d.roads ? ROADS[d.roads] : null;
-  return `${bannerHTML()}
+  return `${checkinHTML()}${bannerHTML()}
    <section class="hero${heroEnter ? " enter" : ""}" aria-label="${esc(SCENES[d.scene].label)}">${sceneSVG(d.scene)}<div class="txt">
      <span class="place">${esc(SCENES[d.scene].label)}</span><h2>${esc(d.title)}</h2>
      <span class="meta"><span>יום ${dayIdx + 1} מתוך ${ds.length} · ${d.dow}, ${dateStr}</span><span>לינה: <b>${esc(d.sleep)}</b></span></span></div></section>
@@ -284,7 +302,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.19-7";
+const APP_VERSION = "2026.11.19-8";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -405,6 +423,7 @@ function render() {
 
 document.addEventListener("click", e => {
   const c = e.target.closest("[data-copy]"); if (c) { copy(c.dataset.copy); return }
+  const ci = e.target.closest("[data-ci]"); if (ci) { const x = store.get("checkin", {}); x[ci.dataset.ci] = true; store.set("checkin", x); render(); toast("מעולה, הצ'ק-אין סומן"); return }
   const dn = e.target.closest("[data-done]"); if (dn) { toggleDone(daysFor(fam)[dayIdx], +dn.dataset.done); return }
   const dc = e.target.closest("[data-doc]"); if (dc) { openDoc(dc.dataset.doc); return }
   if (e.target.closest(".reveal")) askUnlock();

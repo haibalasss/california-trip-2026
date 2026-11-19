@@ -242,3 +242,13 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .tab{padding-inline:8px}
 .assume{margin:0;padding-inline-start:18px;display:grid;gap:5px;font-size:13.5px}
 .assume b{font-weight:500}
+
+.ci{border-radius:var(--r);padding:12px 14px;display:grid;gap:4px;font-size:13.5px}
+.ci b{font-family:var(--f-display);font-size:16px}
+.ci.open{background:var(--bridge);color:#fff}
+.ci.open .btn{background:#fff;color:var(--ink);border-color:#fff}
+.ci.open .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.ci.soon{background:var(--sea-soft)}
+.ci .actions{margin-top:4px;align-items:center}
+.ci-code{display:inline-flex;gap:6px;align-items:center;font-size:12.5px}
+.ci.open .reveal{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.5);color:#fff}.ci.open .reveal .lbl{color:#fff}
