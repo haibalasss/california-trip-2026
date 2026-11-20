@@ -319,3 +319,8 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .fnum.pk{font:800 13px var(--f-display);color:#8A5A00;background:linear-gradient(135deg,#FFF4D6,#FDE7B0);border-radius:50%;width:30px;height:30px}
 .stars{color:#B7791F;font-weight:700}
 #foodlist .sect-title{margin-top:6px}
+
+.askclaude{display:grid;gap:4px}
+.askbtn{justify-content:center;padding:10px;background:linear-gradient(135deg,#FFF4D6,#FDE7B0);border-color:#E9C46A;color:#5A3A00;font-weight:700}
+#livetxt{width:100%;font:12px var(--f-mono);border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);direction:rtl}
+.picks.live .sect-title{color:#B7791F}

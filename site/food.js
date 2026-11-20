@@ -183,6 +183,8 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-food
 
 function drawFood() {
   const box = document.getElementById("foodlist"); if (!box) return;
+  const ask = document.getElementById("askbox"); if (ask) ask.hidden = FOOD.status !== "done";
+  drawLive();
   const pk = document.getElementById("foodpicks");
   if (pk) { const ll = FOOD.where ? FOOD.where.ll : (FOOD.status === "error" || FOOD.status === "idle" ? nextStopLL().ll : null); const h = ll ? picksHTML(ll) : ""; if (pk.dataset.h !== h) { pk.innerHTML = h; pk.dataset.h = h; } }
   const loc = FOOD.where ? `<p class="src">${FOOD.mode === "gps" ? "📍 ליד המיקום שלך" : "🧭 ליד: " + esc(FOOD.where.label)}${FOOD.at ? " · עודכן ב-" + FOOD.at.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) : ""}</p>` : "";
@@ -213,7 +215,7 @@ function pickInfoHTML(p) {
     <div><h4>מה זה</h4><p>${esc(p.w)}</p></div>
     <div><h4>דירוג ומקור</h4><p>${p.r ? `<b class="stars">⭐ ${p.r}</b> · ` : ""}${esc(p.s)}</p></div>
     <div class="gold"><h4>טיפ זהב</h4><p>${esc(p.k)}</p></div>
-    <div class="actions"><a class="btn primary" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.n + ", " + p.c)}" target="_blank" rel="noopener">🧭 ניווט</a></div></div>`;
+    <div class="actions"><a class="btn primary" href="${p.navll ? `https://www.google.com/maps/dir/?api=1&destination=${p.navll.join(",")}&travelmode=walking` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.n + ", " + p.c)}`}" target="_blank" rel="noopener">🧭 ניווט</a>${p.u ? `<a class="btn" href="${esc(p.u)}" target="_blank" rel="noopener">אתר / תפריט</a>` : ""}</div></div>`;
 }
 function picksHTML(ll) {
   const a = ll && areaFor(ll); if (!a) return "";
@@ -229,14 +231,59 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-pick
   b.setAttribute("aria-expanded", open); b.querySelector(".st-more").textContent = open ? "סגירה ▲" : "מה זה? ▼";
   if (old) old.remove(); else { li.insertAdjacentHTML("beforeend", pickInfoHTML(p)); hydrateImages(li); } });
 
+/* ---------- Live picks from Claude: the family sends their location in the chat, Claude researches and publishes food-live.json ---------- */
+let LIVE = null;
+async function loadLive() {
+  try { const r = await fetch("food-live.json?t=" + Date.now(), { cache: "no-store", signal: tmo(6000) }); if (!r.ok) return; LIVE = await r.json(); drawLive(); } catch (e) { }
+}
+function ago(iso) { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 60 ? `לפני ${Math.max(1, m)} דק'` : m < 1440 ? `לפני ${Math.round(m / 60)} שע'` : new Date(iso).toLocaleDateString("he-IL", { day: "numeric", month: "numeric" }); }
+function drawLive() {
+  const box = document.getElementById("foodlive"); if (!box) return;
+  if (!LIVE || !LIVE.items || !LIVE.items.length) { box.innerHTML = ""; return; }
+  const here = FOOD.where && FOOD.where.ll, far = here && LIVE.where && LIVE.where.ll ? haversine(here, LIVE.where.ll) > 3000 : false;
+  box.innerHTML = `<section class="picks live"><h3 class="sect-title">✨ ההמלצות של Claude למיקום שלכם</h3>
+    <p class="src">${esc(LIVE.where && LIVE.where.label || "")} · עודכן ${ago(LIVE.updated)}${far ? " · ⚠️ נשלח ממקום אחר, רחוק ממכם עכשיו" : ""}</p>
+    ${LIVE.note ? `<div class="note">${esc(LIVE.note)}</div>` : ""}
+    <ol class="stops foods">${LIVE.items.map((p, i) => { const d = here && p.ll ? Math.max(1, Math.round(haversine(here, p.ll) / 80)) : null;
+      return `<li><span class="num fnum pk" aria-hidden="true">${p.r || "★"}</span>
+      <button class="st-b st-btn" data-live="${i}" aria-expanded="false"><span class="st-n" dir="auto">${esc(p.n)}</span>
+        <span class="st-x">${esc(p.t || "")}${p.r ? ` · ⭐ ${p.r}` : ""}${p.s ? " · " + esc(p.s) : ""}</span><span class="st-more">מה זה? ▼</span></button>
+      <span class="fmin">${d ? `🚶 ${d}′` : ""}</span></li>`; }).join("")}</ol></section>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-live]"); if (!b || !LIVE) return;
+  const li = b.closest("li"), p = LIVE.items[+b.dataset.live], old = li.querySelector(".sinfo"), open = !old;
+  b.setAttribute("aria-expanded", open); b.querySelector(".st-more").textContent = open ? "סגירה ▲" : "מה זה? ▼";
+  if (old) old.remove(); else { li.insertAdjacentHTML("beforeend", pickInfoHTML(Object.assign({ c: p.c || "" }, p, { navll: p.ll }))); hydrateImages(li); } });
+
+function liveRequestText() {
+  const w = FOOD.where; if (!w) return null;
+  const now = new Date(), area = areaFor(w.ll);
+  const list = FOOD.items.slice(0, 12).map((x, i) => `${i + 1}. ${x.t.name}${x.t.cuisine ? " (" + x.t.cuisine + ")" : ""} · ${Math.round(x.dist)}m${x.open === true ? " · open" : x.open === false ? " · closed" : ""}${x.t.opening_hours ? " · " + x.t.opening_hours : ""}`).join("\n");
+  return `🍽️ בקשת המלצות אוכל ממשפחת ${FAMILIES[fam]}\n📍 ${w.ll[0].toFixed(5)},${w.ll[1].toFixed(5)}${area ? " (" + area.n + ")" : ""} · ${w.label}\n🕒 ${now.toLocaleString("he-IL", { timeZone: "America/Los_Angeles", weekday: "long", hour: "2-digit", minute: "2-digit" })} (שעון קליפורניה)\n👨‍👩‍👧‍👦 10 אנשים, כולל ילדים\n\nמקומות קרובים מהמפה:\n${list || "(לא נמצאו)"}\n\nבבקשה: המלצות עם דירוג, מידע ותמונות, ועדכון של האפליקציה.`;
+}
+async function sendToClaude(btn) {
+  const txt = liveRequestText(); if (!txt) { toast("קודם מחפשים מסעדות"); return; }
+  let ok = false;
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) { }
+  if (ok) { btn.textContent = "✓ הועתק. הדביקו בשיחה עם Claude ושלחו"; toast("הועתק. עכשיו מדביקים בשיחה עם Claude"); }
+  else if (navigator.share) { try { await navigator.share({ text: txt }); } catch (e) { } }
+  else { const ta = document.getElementById("livetxt"); ta.hidden = false; ta.value = txt; ta.select(); toast("סמנו והעתיקו את הטקסט"); }
+}
+
 function renderFood() {
   return `<section class="group"><h2>🍽️ אוכל קרוב, במרחק הליכה</h2>
     <div class="seg" role="group" aria-label="חיפוש לפי"><button class="segb" data-fm="gps" aria-pressed="${FOOD.mode === "gps"}">📍 לידי עכשיו</button><button class="segb" data-fm="stop" aria-pressed="${FOOD.mode === "stop"}">🧭 ליד התחנה הבאה</button></div>
     <button class="btn primary fsearch" id="foodgo" type="button">${FOOD.status === "done" ? "🔄 חיפוש מחדש" : "חיפוש מסעדות"}</button>
+    <div id="foodlive"></div>
+    <div class="askclaude" ${FOOD.status === "done" ? "" : "hidden"} id="askbox"><button class="btn askbtn" id="askclaude" type="button">📨 שליחה ל-Claude: המלצות, דירוג ותמונות למיקום הזה</button>
+      <p class="src">ההודעה כוללת את המיקום ואת רשימת המקומות הקרובים. מדביקים אותה בשיחה עם Claude, ותוך כ-2 דקות ההמלצות מופיעות כאן.</p>
+      <textarea id="livetxt" hidden rows="6" readonly></textarea></div>
     <div id="foodpicks"></div><div id="foodlist"></div></section>`;
 }
 function initFood() {
   document.querySelectorAll("[data-fm]").forEach(b => b.onclick = () => { FOOD.mode = b.dataset.fm; store.set("foodmode", FOOD.mode); document.querySelectorAll("[data-fm]").forEach(x => x.setAttribute("aria-pressed", x === b)); loadFood(); });
   $("#foodgo").onclick = loadFood;
+  $("#askclaude").onclick = e => sendToClaude(e.currentTarget);
+  drawLive(); loadLive();
   if (FOOD.status === "idle" && FOOD.mode === "stop") loadFood(); else drawFood();
 }
