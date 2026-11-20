@@ -47,11 +47,23 @@ function familyScore(t, dist) {
   return s - dist / 350;
 }
 
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+let overpassLast = store.get("overpassOK", 0), overpassErrs = [];
 async function overpass(ll, radius) {
-  const q = `[out:json][timeout:20];(nwr["amenity"~"^(restaurant|fast_food|cafe|ice_cream|food_court)$"]["name"](around:${radius},${ll[0]},${ll[1]}););out center tags 120;`;
-  const urls = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
-  for (const u of urls) {
-    try { const r = await fetch(u + "?data=" + encodeURIComponent(q), { signal: tmo(20000) }); if (r.ok) return (await r.json()).elements || []; } catch (e) { }
+  const q = `[out:json][timeout:15];nwr["amenity"~"^(restaurant|fast_food|cafe|ice_cream|food_court)$"]["name"](around:${radius},${ll[0].toFixed(5)},${ll[1].toFixed(5)});out tags center 120;`;
+  overpassErrs = [];
+  const order = OVERPASS.map((u, i) => (i + overpassLast) % OVERPASS.length);   // start with the server that worked last time
+  for (const i of order) {
+    const u = OVERPASS[i], host = new URL(u).hostname;
+    try {
+      const r = await fetch(u, { method: "POST", body: new URLSearchParams({ data: q }), signal: tmo(12000) });
+      if (!r.ok) { overpassErrs.push(`${host}: ${r.status}`); continue; }
+      const j = await r.json();
+      if (j.remark && /error|runtime/i.test(j.remark) && !(j.elements || []).length) { overpassErrs.push(`${host}: ${j.remark.slice(0, 60)}`); continue; }
+      overpassLast = i; store.set("overpassOK", i);
+      return j.elements || [];
+    } catch (e) { overpassErrs.push(`${host}: ${e.name === "TimeoutError" || e.name === "AbortError" ? "timeout" : (e.message || "network")}`); }
   }
   throw new Error("overpass");
 }
@@ -87,7 +99,8 @@ async function loadFood() {
     FOOD.status = "error";
     FOOD.err = e && e.code === 1 ? "לא אישרתם גישה למיקום. אפשר לאשר בהגדרות הדפדפן, או לבחור \"ליד התחנה הבאה\"."
       : e && (e.code === 2 || e.code === 3 || e.message === "nogeo") ? "לא הצלחתי לקבל מיקום. נסו שוב, או בחרו \"ליד התחנה הבאה\"."
-      : "אין חיבור לשירות המפות כרגע. נסו שוב בעוד רגע.";
+      : "שירותי המפות לא ענו כרגע. נסו שוב בעוד רגע.";
+    if (overpassErrs.length) FOOD.err += "\n" + overpassErrs.join(" · ");
   }
   drawFood();
 }
@@ -172,7 +185,7 @@ function drawFood() {
   const box = document.getElementById("foodlist"); if (!box) return;
   const loc = FOOD.where ? `<p class="src">${FOOD.mode === "gps" ? "📍 ליד המיקום שלך" : "🧭 ליד: " + esc(FOOD.where.label)}${FOOD.at ? " · עודכן ב-" + FOOD.at.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) : ""}</p>` : "";
   if (FOOD.status === "loading") { box.innerHTML = `<div class="fload"><span class="sk"></span>${FOOD.mode === "gps" ? "מאתר מיקום ומחפש מסעדות קרובות…" : "מחפש מסעדות ליד התחנה…"}</div>`; return; }
-  if (FOOD.status === "error") { box.innerHTML = `<div class="alert"><span class="dot"></span><div>${esc(FOOD.err)}</div></div>`; return; }
+  if (FOOD.status === "error") { const [m, d] = FOOD.err.split("\n"); box.innerHTML = `<div class="alert"><span class="dot"></span><div>${esc(m)}${d ? `<div class="src" dir="ltr" style="margin-top:4px">${esc(d)}</div>` : ""}</div></div>`; return; }
   if (FOOD.status !== "done") { box.innerHTML = ""; return; }
   if (!FOOD.items.length) { box.innerHTML = loc + `<p class="src">לא נמצאו מקומות אוכל במרחק הליכה.</p>`; return; }
   FOOD_OPEN.clear();
