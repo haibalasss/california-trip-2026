@@ -14,14 +14,14 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment2.outputs.page_url }}
     steps:
       - name: Trip window check
         id: win
@@ -54,6 +54,16 @@ jobs:
 
       - id: deployment
         if: steps.win.outputs.skip != '1'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      # GitHub's artifact service is sometimes slow to register the upload; wait and retry once.
+      - name: Wait before retry
+        if: steps.win.outputs.skip != '1' && steps.deployment.outcome == 'failure'
+        run: sleep 30
+
+      - id: deployment2
+        if: steps.win.outputs.skip != '1' && steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
 
   # On every push: check that flight status can be read at all (green = works, red = source blocked).
