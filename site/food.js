@@ -101,6 +101,73 @@ function foodTags(t) {
   return b;
 }
 
+const CUISINE_PHOTO = { pizza: "pizza slice", burger: "cheeseburger fries", american: "american diner food", diner: "american diner", mexican: "tacos mexican food", italian: "pasta italian food",
+  pancake: "pancakes breakfast", breakfast: "breakfast pancakes", sandwich: "sandwich", chicken: "fried chicken", ice_cream: "ice cream cone", donut: "donuts", bagel: "bagels",
+  noodle: "noodles bowl", sushi: "sushi", japanese: "japanese food", chinese: "chinese food", thai: "thai food", indian: "indian curry", seafood: "seafood clam chowder",
+  fish_and_chips: "fish and chips", steak_house: "steak dinner", coffee_shop: "coffee latte", bakery: "bakery pastries", vietnamese: "pho", korean: "korean bbq",
+  mediterranean: "mediterranean food", greek: "greek food", french: "french bistro food", hot_dog: "hot dog", tacos: "tacos", burrito: "burrito", frozen_yogurt: "frozen yogurt",
+  crepe: "crepes", salad: "salad bowl", bbq: "barbecue ribs", ramen: "ramen", chocolate: "chocolate dessert" };
+const AMENITY_PHOTO = { restaurant: "restaurant food", fast_food: "fast food", cafe: "cafe coffee", ice_cream: "ice cream", food_court: "food court" };
+const FOOD_OPEN = new Set();
+
+function cuisineList(t) { return (t.cuisine || "").split(/[;,]/).map(c => c.trim()).filter(Boolean); }
+function foodAbout(x) {
+  const t = x.t, cu = cuisineList(t).map(c => CUISINE_HE[c]).filter(Boolean);
+  const fem = /restaurant|ice_cream/.test(t.amenity);
+  let a = (AMENITY_HE[t.amenity] || "מקום אוכל") + (cu.length ? (fem ? " שמגישה " : " שמגיש ") + cu.join(", ") : "");
+  if (t.brand) a += `. שייך לרשת ${t.brand}`;
+  if (t["addr:street"]) a += `, ב-${t["addr:housenumber"] ? t["addr:housenumber"] + " " : ""}${t["addr:street"]}`;
+  return a + ".";
+}
+function foodExpect(x) {
+  const t = x.t, l = [], min = Math.max(1, Math.round(x.dist / 80));
+  l.push(`${min === 1 ? "דקת הליכה אחת" : min + " דקות הליכה"} (כ-${Math.round(x.dist / 10) * 10} מ').`);
+  if (x.open === true) l.push("פתוח עכשיו לפי שעות הפתיחה במפה."); else if (x.open === false) l.push("סגור עכשיו לפי שעות הפתיחה במפה.");
+  const seat = []; if (t.indoor_seating === "yes") seat.push("ישיבה בפנים"); if (t.outdoor_seating === "yes") seat.push("ישיבה בחוץ");
+  if (t.takeaway === "yes") seat.push("טייק אווי"); if (t.takeaway === "only") seat.push("טייק אווי בלבד"); if (t.delivery === "yes") seat.push("משלוחים");
+  if (seat.length) l.push(seat.join(", ") + ".");
+  const kids = []; if (t.highchair === "yes") kids.push("כיסאות תינוק"); if (t.kids_area === "yes" || t["kids_area:indoor"] === "yes") kids.push("פינת משחקים"); if (t.changing_table === "yes") kids.push("משטח החתלה");
+  if (kids.length) l.push("לילדים: " + kids.join(", ") + ".");
+  if (t.wheelchair === "yes") l.push("נגיש, נוח גם עם עגלה.");
+  const diet = []; if (/yes|only/.test(t["diet:vegetarian"] || "")) diet.push("צמחוני"); if (/yes|only/.test(t["diet:vegan"] || "")) diet.push("טבעוני"); if (/yes|only/.test(t["diet:gluten_free"] || "")) diet.push("ללא גלוטן"); if (/yes|only/.test(t["diet:kosher"] || "")) diet.push("כשר");
+  if (diet.length) l.push("אפשרויות: " + diet.join(", ") + ".");
+  return l.join(" ");
+}
+function foodTips(x) {
+  const t = x.t, tips = [], c = t.cuisine || "";
+  if (/fast_food|ice_cream/.test(t.amenity)) tips.push("מהיר וזול. מתאים כשהילדים רעבים עכשיו ואין כוח לשבת הרבה.");
+  if (/pizza/.test(c)) tips.push("בקבוצה של עשרה, פיצות גדולות לשיתוף הן בדרך כלל הדרך הכי זולה ומהירה להאכיל את כולם.");
+  if (/seafood|fish_and_chips/.test(c)) tips.push("באזור החוף כדאי לנסות קלאם צ'אודר. ילדים שלא אוהבים פירות ים יכולים להזמין פיש אנד צ'יפס.");
+  if (t.reservation === "required" || t.reservation === "recommended") tips.push("מומלץ להזמין מקום מראש. אתם עשרה אנשים.");
+  if (t.takeaway === "yes" && t.outdoor_seating !== "yes") tips.push("אפשר לקחת ולאכול בפארק או על החוף הקרוב.");
+  if (x.open === false) tips.push("סגור עכשיו. כדאי לבדוק מתי הוא נפתח, או לבחור מקום אחר מהרשימה.");
+  if (!t.opening_hours) tips.push("השעות לא מופיעות במפה. אם יש טלפון, כדאי להתקשר לפני שהולכים.");
+  if (new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }) === "2026-11-26") tips.push("היום חג ההודיה. הרבה מקומות סגורים או בשעות מקוצרות, אז עדיף להתקשר.");
+  if (!tips.length) tips.push("במסעדות בארה\"ב נהוג להשאיר טיפ של 18–20%. בקבוצה גדולה הוא לפעמים כבר כלול בחשבון (\"gratuity\"). כדאי לבדוק.");
+  return tips;
+}
+function foodPhotoQ(t) { const c = cuisineList(t).find(c => CUISINE_PHOTO[c]); return c ? CUISINE_PHOTO[c] : (AMENITY_PHOTO[t.amenity] || "restaurant food"); }
+function foodInfoHTML(x) {
+  const t = x.t, own = t.image && /^https:\/\//.test(t.image) ? t.image : null;
+  const gal = own ? `<div class="simg gal-wrap"><div class="gal"><figure><img src="${esc(own)}" alt="${esc(t.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.simg').remove()"><figcaption><span>${esc(t.name)}</span></figcaption></figure></div></div>`
+    : `<div class="simg" data-q="${esc(foodPhotoQ(t))}" data-note="תמונה להמחשה"><span class="sk"></span></div>`;
+  return `<div class="sinfo">${gal}<div><h4>מה זה</h4><p>${esc(foodAbout(x))}</p>${t.description ? `<p dir="ltr" class="fdesc">${esc(t.description)}</p>` : ""}</div>
+    <div><h4>מה מחכה שם</h4><p>${esc(foodExpect(x))}</p>${t.opening_hours ? `<p class="fi-o">🕒 <span dir="ltr">${esc(t.opening_hours)}</span></p>` : ""}</div>
+    <div class="gold"><h4>טיפ זהב</h4>${foodTips(x).map(p => `<p>${esc(p)}</p>`).join("")}</div>
+    <div class="actions"><a class="btn primary" href="https://www.google.com/maps/dir/?api=1&destination=${x.ll.join(",")}&travelmode=walking" target="_blank" rel="noopener">🚶 הליכה לשם</a>
+      ${t.phone || t["contact:phone"] ? `<a class="btn" href="tel:${esc((t.phone || t["contact:phone"]).replace(/[^+\d]/g, ""))}">${esc(t.phone || t["contact:phone"])}</a>` : ""}
+      ${t.website || t["contact:website"] ? `<a class="btn" href="${esc(t.website || t["contact:website"])}" target="_blank" rel="noopener">אתר / תפריט</a>` : ""}</div></div>`;
+}
+function toggleFood(btn) {
+  const i = +btn.dataset.food, li = btn.closest("li"), x = FOOD.items[i], open = !FOOD_OPEN.has(i);
+  open ? FOOD_OPEN.add(i) : FOOD_OPEN.delete(i);
+  btn.setAttribute("aria-expanded", open); btn.querySelector(".st-more").textContent = open ? "סגירה ▲" : "מה זה? ▼";
+  const old = li.querySelector(".sinfo"); if (old) old.remove();
+  if (open) { li.insertAdjacentHTML("beforeend", foodInfoHTML(x)); const box = li.querySelector(".sinfo"); hydrateImages(box);
+    requestAnimationFrame(() => { const r = box.getBoundingClientRect(); if (r.bottom > innerHeight) box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }); }
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-food]"); if (b) toggleFood(b); });
+
 function drawFood() {
   const box = document.getElementById("foodlist"); if (!box) return;
   const loc = FOOD.where ? `<p class="src">${FOOD.mode === "gps" ? "📍 ליד המיקום שלך" : "🧭 ליד: " + esc(FOOD.where.label)}${FOOD.at ? " · עודכן ב-" + FOOD.at.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) : ""}</p>` : "";
@@ -108,20 +175,17 @@ function drawFood() {
   if (FOOD.status === "error") { box.innerHTML = `<div class="alert"><span class="dot"></span><div>${esc(FOOD.err)}</div></div>`; return; }
   if (FOOD.status !== "done") { box.innerHTML = ""; return; }
   if (!FOOD.items.length) { box.innerHTML = loc + `<p class="src">לא נמצאו מקומות אוכל במרחק הליכה.</p>`; return; }
-  box.innerHTML = loc + FOOD.items.map(x => { const t = x.t, min = Math.max(1, Math.round(x.dist / 80));
-    const cu = (t.cuisine || "").split(/[;,]/).map(c => CUISINE_HE[c.trim()] || "").filter(Boolean).slice(0, 2).join(" · ");
-    const tags = foodTags(t), fam = x.score >= 2.5;
-    return `<article class="fitem">
-      <div class="fi-h"><b>${esc(t.name)}</b><span class="fi-d">🚶 ${min} דק'</span></div>
-      <div class="fi-m"><span>${esc(AMENITY_HE[t.amenity] || "")}${cu ? " · " + esc(cu) : ""}</span>${x.open === true ? `<span class="op">פתוח עכשיו</span>` : x.open === false ? `<span class="cl">סגור עכשיו</span>` : ""}${fam ? `<span class="fam">👨‍👩‍👧 מתאים למשפחות</span>` : ""}</div>
-      ${tags.length ? `<div class="fi-t">${tags.map(esc).join(" · ")}</div>` : ""}
-      ${t.opening_hours ? `<div class="fi-o">🕒 <span dir="ltr">${esc(t.opening_hours)}</span></div>` : ""}
-      <div class="actions"><a class="btn primary" href="https://www.google.com/maps/dir/?api=1&destination=${x.ll.join(",")}&travelmode=walking" target="_blank" rel="noopener">הליכה לשם</a>
-        ${t.phone || t["contact:phone"] ? `<a class="btn" href="tel:${esc((t.phone || t["contact:phone"]).replace(/[^+\d]/g, ""))}">${esc(t.phone || t["contact:phone"])}</a>` : ""}
-        ${t.website || t["contact:website"] ? `<a class="btn" href="${esc(t.website || t["contact:website"])}" target="_blank" rel="noopener">אתר / תפריט</a>` : ""}</div></article>`; }).join("") +
-    `<p class="src">הנתונים מ-OpenStreetMap. סימון "מתאים למשפחות" מבוסס על סוג המטבח ועל כיסא תינוק או פינת משחקים כשהם מסומנים במפה. כדאי לבדוק שעות לפני שהולכים, במיוחד בחג ההודיה.</p>`;
+  FOOD_OPEN.clear();
+  const icon = t => ({ pizza: "🍕", burger: "🍔", mexican: "🌮", tacos: "🌮", ice_cream: "🍦", donut: "🍩", sushi: "🍣", japanese: "🍱", chinese: "🥡", italian: "🍝", pancake: "🥞", breakfast: "🥞", coffee_shop: "☕", seafood: "🦞", chicken: "🍗", sandwich: "🥪", bakery: "🥐", noodle: "🍜", ramen: "🍜", thai: "🍜", indian: "🍛", hot_dog: "🌭" })[cuisineList(t)[0]] || ({ cafe: "☕", ice_cream: "🍦", fast_food: "🍟" })[t.amenity] || "🍽️";
+  box.innerHTML = loc + `<ol class="stops foods">${FOOD.items.map((x, i) => { const t = x.t, min = Math.max(1, Math.round(x.dist / 80));
+    const cu = cuisineList(t).map(c => CUISINE_HE[c]).filter(Boolean).slice(0, 2).join(" · ");
+    return `<li><span class="num fnum" aria-hidden="true">${icon(t)}</span>
+      <button class="st-b st-btn" data-food="${i}" aria-expanded="false"><span class="st-n" dir="auto">${esc(t.name)}</span>
+        <span class="st-x">${esc(AMENITY_HE[t.amenity] || "")}${cu ? " · " + esc(cu) : ""}${x.open === true ? ` · <b class="op">פתוח</b>` : x.open === false ? ` · <b class="cl">סגור</b>` : ""}${x.score >= 2.5 ? ` · <b class="famb2">👨‍👩‍👧 למשפחות</b>` : ""}</span>
+        <span class="st-more">מה זה? ▼</span></button>
+      <span class="fmin">🚶 ${min}′</span></li>`; }).join("")}</ol>
+    <p class="src">הנתונים מ-OpenStreetMap. התיאור והטיפ נבנים מפרטי המקום שבמפה, כמו סוג המטבח, שעות, ישיבה וכיסא תינוק, ולא מביקורות. כשאין תמונה של המקום עצמו, מוצגות תמונות להמחשה של סוג האוכל.</p>`;
 }
-
 function renderFood() {
   return `<section class="group"><h2>🍽️ אוכל קרוב, במרחק הליכה</h2>
     <div class="seg" role="group" aria-label="חיפוש לפי"><button class="segb" data-fm="gps" aria-pressed="${FOOD.mode === "gps"}">📍 לידי עכשיו</button><button class="segb" data-fm="stop" aria-pressed="${FOOD.mode === "stop"}">🧭 ליד התחנה הבאה</button></div>

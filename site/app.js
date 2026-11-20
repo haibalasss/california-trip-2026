@@ -306,7 +306,7 @@ function hydrateImages(root) {
     el.classList.add("gal-wrap");
     el.innerHTML = `<div class="gal" tabindex="0" aria-label="תמונות">${imgs.map((im, i) => `<figure>
         <img src="${esc(im.src)}" alt="${esc(im.cap)}" loading="${i ? "lazy" : "eager"}" decoding="async" referrerpolicy="no-referrer" onerror="this.closest('figure').remove()">
-        <figcaption><a href="${esc(im.page)}" target="_blank" rel="noopener">📷 ${esc(im.by || "photo")}${im.lic ? " · " + esc(im.lic) : ""}</a></figcaption></figure>`).join("")}</div>
+        <figcaption>${el.dataset.note ? `<span>${esc(el.dataset.note)}</span>` : ""}<a href="${esc(im.page)}" target="_blank" rel="noopener">📷 ${esc(im.by || "photo")}${im.lic ? " · " + esc(im.lic) : ""}</a></figcaption></figure>`).join("")}</div>
       ${imgs.length > 1 ? `<span class="gcount">1 / ${imgs.length}</span>` : ""}`;
     const g = el.querySelector(".gal"), c = el.querySelector(".gcount");
     if (c) g.addEventListener("scroll", () => { const figs = [...g.children]; const gr = g.getBoundingClientRect(); let best = 0, bd = 1e9;
@@ -369,7 +369,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.20-7";
+const APP_VERSION = "2026.11.20-8";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);

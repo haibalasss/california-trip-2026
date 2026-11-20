@@ -307,3 +307,10 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .fi-m .op{color:var(--ok);font-weight:700}.fi-m .cl{color:var(--bridge);font-weight:700}
 .fi-m .fam{background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:1px 8px;font-weight:500}
 .fi-t,.fi-o{font-size:12px;color:var(--muted)}
+
+.foods li{grid-template-columns:30px 1fr auto}
+.fnum{border:0!important;font-size:20px;display:flex;align-items:center;justify-content:center}
+.fmin{font-size:12.5px;color:var(--sea);font-weight:700;white-space:nowrap;align-self:start;padding-top:2px}
+.foods .st-x .op{color:var(--ok)}.foods .st-x .cl{color:var(--bridge)}.foods .st-x .famb2{color:var(--ok);font-weight:500}
+.fdesc{font-size:12.5px;color:var(--muted);margin-top:4px!important}
+.sinfo .actions{margin-top:2px}
