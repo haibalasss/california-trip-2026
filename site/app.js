@@ -254,13 +254,13 @@ function toggleInfo(btn) {
   btn.setAttribute("aria-expanded", open);
   btn.querySelector(".st-more").textContent = open ? "סגירה ▲" : "מה זה? ▼";
   const old = li.querySelector(".sinfo"); if (old) old.remove();
-  if (open) { li.insertAdjacentHTML("beforeend", infoHTML(inf)); const box = li.querySelector(".sinfo"); requestAnimationFrame(() => { const r = box.getBoundingClientRect(); if (r.bottom > innerHeight) box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }); }
+  if (open) { li.insertAdjacentHTML("beforeend", infoHTML(inf, d.stops[+i].n)); const box = li.querySelector(".sinfo"); hydrateImages(box); requestAnimationFrame(() => { const r = box.getBoundingClientRect(); if (r.bottom > innerHeight) box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }); }
 }
 function toggleNextInfo(btn) {
   const sec = btn.closest(".next"), d = daysFor(fam)[dayIdx], inf = INFO[d.stops[+btn.dataset.nxinfo].n];
   nextInfoOpen = !nextInfoOpen; btn.textContent = nextInfoOpen ? "סגירה" : "ℹ️ מה זה?";
   const old = sec.querySelector(".sinfo"); if (old) old.remove();
-  if (nextInfoOpen) sec.querySelector(".actions").insertAdjacentHTML("afterend", infoHTML(inf));
+  if (nextInfoOpen) { sec.querySelector(".actions").insertAdjacentHTML("afterend", infoHTML(inf, d.stops[+btn.dataset.nxinfo].n)); hydrateImages(sec); }
 }
 function nextHTML(d) {
   const stops = d.stops.map((s, i) => [s, i]).filter(([s]) => forFam(s)), done = doneSet(d);
@@ -272,12 +272,38 @@ function nextHTML(d) {
     <div class="nx-top"><span class="nx-lbl">${isToday ? (done.size ? "עכשיו" : "מתחילים") : "התחנה הראשונה"}</span>${s.t ? `<span class="nx-t">${esc(s.t)}</span>` : ""}</div>
     <div class="nx-n"><span class="nx-i" aria-hidden="true">${s.i || "📍"}</span>${esc(s.n)}</div>${s.x ? `<p>${esc(s.x)}</p>` : ""}
     <div class="actions"><a class="btn primary" href="${gdest(s.ll)}" target="_blank" rel="noopener">ניווט</a><button class="btn" data-done="${i}">✓ סיימנו, לתחנה הבאה</button>${INFO[s.n] ? `<button class="btn" data-nxinfo="${i}">${nextInfoOpen ? "סגירה" : "ℹ️ מה זה?"}</button>` : ""}</div>
-    ${INFO[s.n] && nextInfoOpen ? infoHTML(INFO[s.n]) : ""}
+    ${INFO[s.n] && nextInfoOpen ? infoHTML(INFO[s.n], s.n) : ""}
     ${after ? `<div class="nx-after">אחר כך: ${esc(after[0].n)}</div>` : ""}</section>`;
 }
 const openStops = new Set();
-function infoHTML(inf) {
-  return `<div class="sinfo"><div><h4>מה זה</h4><p>${esc(inf.a)}</p></div><div><h4>מה מחכה שם</h4><p>${esc(inf.e)}</p></div>
+/* Place photo: lead image of the stop's Wikipedia article, loaded on the phone (cached for offline by the service worker) */
+const wikiMem = store.get("wikiimg", {});
+async function wikiImage(titles) {
+  for (const t of titles) {
+    if (wikiMem[t] !== undefined) { if (wikiMem[t]) return wikiMem[t]; continue; }
+    try {
+      const r = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(t.replace(/ /g, "_")), { signal: tmo(6000) });
+      if (!r.ok) { if (r.status === 404) wikiMem[t] = null; continue; }
+      const j = await r.json(), th = j.thumbnail && j.thumbnail.source;
+      const src = th ? th.replace(/\/(\d+)px-/, "/960px-") : (j.originalimage && j.originalimage.source);
+      wikiMem[t] = src ? { src, small: th || src, page: j.content_urls && j.content_urls.mobile && j.content_urls.mobile.page, title: j.title } : null;
+      store.set("wikiimg", wikiMem);
+      if (wikiMem[t]) return wikiMem[t];
+    } catch (e) { return null; }
+  }
+  return null;
+}
+function hydrateImages(root) {
+  (root || document).querySelectorAll(".simg[data-stop]:not(.done)").forEach(async el => {
+    el.classList.add("done");
+    const w = await wikiImage(WIKI[el.dataset.stop] || []);
+    if (!w) { el.remove(); return; }
+    el.innerHTML = `<img src="${esc(w.src)}" alt="${esc(el.dataset.stop)}" loading="lazy" decoding="async" onerror="if(this.src!=='${esc(w.small)}'){this.src='${esc(w.small)}'}else{this.closest('.simg').remove()}">
+      <a class="credit" href="${esc(w.page || "https://en.wikipedia.org")}" target="_blank" rel="noopener">📷 Wikipedia · ${esc(w.title)}</a>`;
+  });
+}
+function infoHTML(inf, name) {
+  return `<div class="sinfo">${name && WIKI[name] ? `<div class="simg" data-stop="${esc(name)}"><span class="sk"></span></div>` : ""}<div><h4>מה זה</h4><p>${esc(inf.a)}</p></div><div><h4>מה מחכה שם</h4><p>${esc(inf.e)}</p></div>
     <div class="gold"><h4>טיפ זהב</h4>${inf.t.map(t => `<p>${esc(t.replace(/^💡\s*/, ""))}</p>`).join("")}</div></div>`;
 }
 function stopsHTML(d) {
@@ -288,7 +314,7 @@ function stopsHTML(d) {
         const body = `<span class="st-n">${s.i ? `<span aria-hidden="true">${s.i}</span> ` : ""}${esc(s.n)}</span>${s.x || s.t ? `<span class="st-x">${s.t ? `<b>${esc(s.t)}</b> ` : ""}${s.x ? esc(s.x) : ""}</span>` : ""}`;
         return inf ? `<button class="st-b st-btn" data-info="${d.d}:${i}" aria-expanded="${op}">${body}<span class="st-more">${op ? "סגירה ▲" : "מה זה? ▼"}</span></button>` : `<div class="st-b">${body}</div>`; })()}
       <a class="nav" href="${gdest(s.ll)}" target="_blank" rel="noopener" aria-label="ניווט אל ${esc(s.n)}">➤</a>
-      ${INFO[s.n] && openStops.has(d.d + ":" + i) ? infoHTML(INFO[s.n]) : ""}</li>` }).join("")}</ol>`;
+      ${INFO[s.n] && openStops.has(d.d + ":" + i) ? infoHTML(INFO[s.n], s.n) : ""}</li>` }).join("")}</ol>`;
 }
 function remindHTML(d) {
   if (d.d !== today) return "";
@@ -329,7 +355,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.20-2";
+const APP_VERSION = "2026.11.20-3";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -441,6 +467,7 @@ function render() {
   if (mapInst) { mapInst.remove(); mapInst = null; }
   $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : renderPack();
   open.forEach(([id, o]) => { const el = id && document.getElementById(id); if (el) el.open = o; });
+  hydrateImages($("#view"));
   if (view === "days") { $("#mapbtn").onclick = () => { const m = $("#map"); if (!m.hidden) { m.hidden = true; if (mapInst) { mapInst.remove(); mapInst = null; } } else showMap(d); };
     if (mapOpen && !heroEnter) showMap(d); }
   if (view === "clothes") $("#view").querySelectorAll("input[data-c]").forEach(c => c.onchange = () => { const x = store.get("clothes:" + fam, {}); x[c.dataset.c] = c.checked; store.set("clothes:" + fam, x); render() });
