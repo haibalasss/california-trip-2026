@@ -277,29 +277,52 @@ function nextHTML(d) {
 }
 const openStops = new Set();
 /* Place photo: lead image of the stop's Wikipedia article, loaded on the phone (cached for offline by the service worker) */
-const wikiMem = store.get("wikiimg", {});
-async function wikiImage(titles) {
+const wikiMem = store.get("wikigal", {});
+const SKIP_IMG = /(map|locator|logo|flag|seal_of|icon|svg|diagram|chart|coat_of_arms|signature|location|route|plan\b|\.tif)/i;
+async function wikiGallery(titles) {
+  const out = [], seen = new Set();
   for (const t of titles) {
-    if (wikiMem[t] !== undefined) { if (wikiMem[t]) return wikiMem[t]; continue; }
-    try {
-      const r = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(t.replace(/ /g, "_")), { signal: tmo(6000) });
-      if (!r.ok) { if (r.status === 404) wikiMem[t] = null; continue; }
-      const j = await r.json(), th = j.thumbnail && j.thumbnail.source;
-      const src = th ? th.replace(/\/(\d+)px-/, "/960px-") : (j.originalimage && j.originalimage.source);
-      wikiMem[t] = src ? { src, small: th || src, page: j.content_urls && j.content_urls.mobile && j.content_urls.mobile.page, title: j.title } : null;
-      store.set("wikiimg", wikiMem);
-      if (wikiMem[t]) return wikiMem[t];
-    } catch (e) { return null; }
+    if (out.length >= 6) break;
+    let list = wikiMem[t];
+    if (list === undefined) {
+      list = [];
+      try {
+        const key = encodeURIComponent(t.replace(/ /g, "_"));
+        const [ml, sm] = await Promise.all([
+          fetch("https://en.wikipedia.org/api/rest_v1/page/media-list/" + key, { signal: tmo(7000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + key, { signal: tmo(7000) }).then(r => r.ok ? r.json() : null).catch(() => null)
+        ]);
+        const page = sm && sm.content_urls && sm.content_urls.mobile && sm.content_urls.mobile.page;
+        const lead = sm && sm.thumbnail && sm.thumbnail.source;
+        if (lead) list.push({ src: lead.replace(/\/(\d+)px-/, "/960px-"), small: lead, cap: sm.title, page });
+        (ml && ml.items || []).filter(it => it.type === "image" && it.showInGallery !== false && !SKIP_IMG.test(it.title || "")).forEach(it => {
+          const ss = it.srcset || []; const pick = ss.find(x => x.scale === "1.5x") || ss[ss.length - 1] || ss[0]; if (!pick) return;
+          const src = (pick.src.startsWith("//") ? "https:" : "") + pick.src;
+          if (lead && src.split("/").pop().replace(/^\d+px-/, "") === lead.split("/").pop().replace(/^\d+px-/, "")) return;
+          list.push({ src, small: src, cap: (it.caption && it.caption.text) || "", page });
+        });
+        if (!ml && !sm) { list = null; }
+        else { wikiMem[t] = list.slice(0, 8); store.set("wikigal", wikiMem); }
+      } catch (e) { list = null; }
+    }
+    (list || []).forEach(im => { const k = im.src.split("/").pop(); if (!seen.has(k) && out.length < 6) { seen.add(k); out.push(im); } });
   }
-  return null;
+  return out;
 }
 function hydrateImages(root) {
   (root || document).querySelectorAll(".simg[data-stop]:not(.done)").forEach(async el => {
     el.classList.add("done");
-    const w = await wikiImage(WIKI[el.dataset.stop] || []);
-    if (!w) { el.remove(); return; }
-    el.innerHTML = `<img src="${esc(w.src)}" alt="${esc(el.dataset.stop)}" loading="lazy" decoding="async" onerror="if(this.src!=='${esc(w.small)}'){this.src='${esc(w.small)}'}else{this.closest('.simg').remove()}">
-      <a class="credit" href="${esc(w.page || "https://en.wikipedia.org")}" target="_blank" rel="noopener">📷 Wikipedia · ${esc(w.title)}</a>`;
+    const imgs = await wikiGallery(WIKI[el.dataset.stop] || []);
+    if (!imgs.length) { el.remove(); return; }
+    el.classList.add("gal-wrap");
+    el.innerHTML = `<div class="gal" tabindex="0" aria-label="תמונות של ${esc(el.dataset.stop)}">${imgs.map((im, i) => `<figure>
+        <img src="${esc(im.src)}" alt="${esc(im.cap || el.dataset.stop)}" loading="${i ? "lazy" : "eager"}" decoding="async" onerror="this.closest('figure').remove()">
+        <figcaption>${im.cap ? `<span>${esc(im.cap.length > 90 ? im.cap.slice(0, 88) + "…" : im.cap)}</span>` : ""}<a href="${esc(im.page || "https://en.wikipedia.org")}" target="_blank" rel="noopener">📷 Wikipedia</a></figcaption></figure>`).join("")}</div>
+      ${imgs.length > 1 ? `<span class="gcount">1 / ${imgs.length}</span>` : ""}`;
+    const g = el.querySelector(".gal"), c = el.querySelector(".gcount");
+    if (c) g.addEventListener("scroll", () => { const figs = [...g.children]; const gr = g.getBoundingClientRect(); let best = 0, bd = 1e9;
+      figs.forEach((f, i) => { const r = f.getBoundingClientRect(), dd = Math.abs((r.left + r.width / 2) - (gr.left + gr.width / 2)); if (dd < bd) { bd = dd; best = i; } });
+      c.textContent = `${best + 1} / ${figs.length}`; }, { passive: true });
   });
 }
 function infoHTML(inf, name) {
@@ -355,7 +378,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.20-3";
+const APP_VERSION = "2026.11.20-4";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);

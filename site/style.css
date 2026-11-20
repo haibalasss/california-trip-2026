@@ -273,3 +273,16 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 @keyframes sk{to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){.simg .sk{animation:none}}
 .simg .credit{position:absolute;bottom:0;inset-inline:0;padding:14px 8px 5px;font-size:10.5px;color:#fff;text-decoration:none;background:linear-gradient(transparent,rgba(0,0,0,.55));direction:ltr;text-align:left}
+
+/* photo gallery: swipe sideways */
+.simg.gal-wrap{aspect-ratio:auto;background:none;overflow:visible;margin:0 -12px 2px}
+.gal{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 12px;scrollbar-width:none;overscroll-behavior-x:contain}
+.gal::-webkit-scrollbar{display:none}
+.gal figure{position:relative;flex:0 0 86%;margin:0;scroll-snap-align:center;border-radius:10px;overflow:hidden;aspect-ratio:16/10;background:var(--line)}
+.gal figure:only-child{flex-basis:100%}
+.gal img{width:100%;height:100%;object-fit:cover;display:block}
+.gal figcaption{position:absolute;bottom:0;inset-inline:0;padding:18px 8px 5px;background:linear-gradient(transparent,rgba(0,0,0,.6));color:#fff;font-size:11px;display:flex;justify-content:space-between;gap:8px;align-items:flex-end;direction:ltr;text-align:left}
+.gal figcaption span{opacity:.92;min-width:0}
+.gal figcaption a{color:#fff;text-decoration:none;white-space:nowrap;opacity:.85}
+.gcount{position:absolute;top:8px;left:20px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;padding:2px 8px;border-radius:999px;font-variant-numeric:tabular-nums;pointer-events:none}
+.simg.gal-wrap{position:relative}
