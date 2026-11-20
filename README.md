@@ -16,5 +16,5 @@
 ```json
 { "updated": "ISO time", "where": { "ll": [lat, lng], "label": "..." }, "note": "optional",
   "items": [ { "n": "name", "c": "address/area", "t": "type (he)", "r": "4.5", "s": "rating source",
-               "w": "what it is (he)", "k": "kids tip (he)", "q": "photo search (en)", "ll": [lat, lng], "u": "website" } ] }
+               "w": "what it is (he)", "k": "kids tip (he)", "ks": "y|t|u (seating with kids: yes / better takeaway / unknown)", "kst": "seating detail (he)", "q": "photo search (en)", "ll": [lat, lng], "u": "website" } ] }
 ```

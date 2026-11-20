@@ -164,7 +164,9 @@ function foodInfoHTML(x) {
   const t = x.t, own = t.image && /^https:\/\//.test(t.image) ? t.image : null;
   const gal = own ? `<div class="simg gal-wrap"><div class="gal"><figure><img src="${esc(own)}" alt="${esc(t.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.simg').remove()"><figcaption><span>${esc(t.name)}</span></figcaption></figure></div></div>`
     : `<div class="simg" data-q="${esc(foodPhotoQ(t))}" data-note="תמונה להמחשה"><span class="sk"></span></div>`;
+  const pk = pickFor(t.name), [sc, st] = pk && pk.ks ? [pk.ks, pk.kst] : osmSeating(t);
   return `<div class="sinfo">${gal}<div><h4>מה זה</h4><p>${esc(foodAbout(x))}</p>${t.description ? `<p dir="ltr" class="fdesc">${esc(t.description)}</p>` : ""}</div>
+    ${seatHTML(sc, st)}
     <div><h4>מה מחכה שם</h4><p>${esc(foodExpect(x))}</p>${t.opening_hours ? `<p class="fi-o">🕒 <span dir="ltr">${esc(t.opening_hours)}</span></p>` : ""}</div>
     <div class="gold"><h4>טיפ זהב</h4>${foodTips(x).map(p => `<p>${esc(p)}</p>`).join("")}</div>
     <div class="actions"><a class="btn primary" href="https://www.google.com/maps/dir/?api=1&destination=${x.ll.join(",")}&travelmode=walking" target="_blank" rel="noopener">🚶 הליכה לשם</a>
@@ -198,11 +200,27 @@ function drawFood() {
     const cu = cuisineList(t).map(c => CUISINE_HE[c]).filter(Boolean).slice(0, 2).join(" · ");
     return `<li><span class="num fnum" aria-hidden="true">${icon(t)}</span>
       <button class="st-b st-btn" data-food="${i}" aria-expanded="false"><span class="st-n" dir="auto">${esc(t.name)}</span>
-        <span class="st-x">${esc(AMENITY_HE[t.amenity] || "")}${cu ? " · " + esc(cu) : ""}${x.open === true ? ` · <b class="op">פתוח</b>` : x.open === false ? ` · <b class="cl">סגור</b>` : ""}${x.score >= 2.5 ? ` · <b class="famb2">👨‍👩‍👧 למשפחות</b>` : ""}${pickFor(t.name) ? ` · <b class="stars">⭐ ${pickFor(t.name).r || "מומלץ"}</b>` : ""}</span>
+        <span class="st-x">${esc(AMENITY_HE[t.amenity] || "")}${cu ? " · " + esc(cu) : ""}${x.open === true ? ` · <b class="op">פתוח</b>` : x.open === false ? ` · <b class="cl">סגור</b>` : ""}${x.score >= 2.5 ? ` · <b class="famb2">👨‍👩‍👧 למשפחות</b>` : ""}${pickFor(t.name) ? ` · <b class="stars">⭐ ${pickFor(t.name).r || "מומלץ"}</b>` : ""}${(() => { const pk = pickFor(t.name), c = pk && pk.ks ? pk.ks : osmSeating(t)[0]; return KS_SHORT[c] ? ` · <b class="ks ks-${c}">${KS_SHORT[c]}</b>` : ""; })()}</span>
         <span class="st-more">מה זה? ▼</span></button>
       <span class="fmin">🚶 ${min}′</span></li>`; }).join("")}</ol>
     <p class="src">הנתונים מ-OpenStreetMap. התיאור והטיפ נבנים מפרטי המקום שבמפה, כמו סוג המטבח, שעות, ישיבה וכיסא תינוק, ולא מביקורות. כשאין תמונה של המקום עצמו, מוצגות תמונות להמחשה של סוג האוכל.</p>`;
 }
+const KS_LABEL = { y: "✅ מתאים לישיבה עם ילדים", t: "🟡 עדיף לקחת", u: "❔ לא ידוע" };
+const KS_SHORT = { y: "✅ ישיבה עם ילדים", t: "🟡 עדיף לקחת", u: "" };
+/* Seating with kids, from OSM tags (only claims what the tags support) */
+function osmSeating(t) {
+  if (t.takeaway === "only") return ["t", "טייק אווי בלבד, בלי ישיבה."];
+  const kids = t.highchair === "yes" || t.kids_area === "yes" || t["kids_area:indoor"] === "yes" || t.changing_table === "yes";
+  const seats = t.indoor_seating === "yes" || t.outdoor_seating === "yes";
+  if (kids) return ["y", [t.highchair === "yes" && "יש כיסאות תינוק", (t.kids_area === "yes" || t["kids_area:indoor"] === "yes") && "יש פינת משחקים", t.changing_table === "yes" && "יש משטח החתלה"].filter(Boolean).join(", ") + "."];
+  if (t.amenity === "food_court") return ["y", "מתחם אוכל עם ישיבה משותפת, נוח לקבוצה."];
+  if (t.amenity === "restaurant" && seats) return ["y", "מסעדה עם " + [t.indoor_seating === "yes" && "ישיבה בפנים", t.outdoor_seating === "yes" && "ישיבה בחוץ"].filter(Boolean).join(" ו") + "."];
+  if (/fast_food|ice_cream|cafe/.test(t.amenity) && !seats) return ["u", "במפה אין מידע על מקומות ישיבה. בדרך כלל יש כמה שולחנות."];
+  if (seats) return ["y", [t.indoor_seating === "yes" && "יש ישיבה בפנים", t.outdoor_seating === "yes" && "יש ישיבה בחוץ"].filter(Boolean).join(", ") + "."];
+  return ["u", "במפה אין מידע על הישיבה."];
+}
+function seatHTML(code, txt) { return code ? `<div class="seat seat-${code}"><h4>🪑 ישיבה עם ילדים</h4><p><b>${KS_LABEL[code]}</b>${txt ? " · " + esc(txt) : ""}</p></div>` : ""; }
+
 function areaFor(ll) {
   let best = null, bd = 1e12;
   FOOD_AREAS.forEach(a => { const d = haversine(ll, a.ll); if (d < a.km * 1000 && d < bd) { bd = d; best = a; } });
@@ -213,6 +231,7 @@ function pickFor(name) { const k = normName(name); return k.length > 3 ? FOOD_PI
 function pickInfoHTML(p) {
   return `<div class="sinfo"><div class="simg" data-q="${esc(p.q)}" data-note="תמונה להמחשה"><span class="sk"></span></div>
     <div><h4>מה זה</h4><p>${esc(p.w)}</p></div>
+    ${seatHTML(p.ks, p.kst)}
     <div><h4>דירוג ומקור</h4><p>${p.r ? `<b class="stars">⭐ ${p.r}</b> · ` : ""}${esc(p.s)}</p></div>
     <div class="gold"><h4>טיפ זהב</h4><p>${esc(p.k)}</p></div>
     <div class="actions"><a class="btn primary" href="${p.navll ? `https://www.google.com/maps/dir/?api=1&destination=${p.navll.join(",")}&travelmode=walking` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.n + ", " + p.c)}`}" target="_blank" rel="noopener">🧭 ניווט</a>${p.u ? `<a class="btn" href="${esc(p.u)}" target="_blank" rel="noopener">אתר / תפריט</a>` : ""}</div></div>`;
@@ -223,7 +242,7 @@ function picksHTML(ll) {
   return `<section class="picks"><h3 class="sect-title">⭐ מומלצים באזור: ${esc(a.n)}</h3>
     <ol class="stops foods">${list.map(([p, i]) => `<li><span class="num fnum pk" aria-hidden="true">${p.r ? p.r : "★"}</span>
       <button class="st-b st-btn" data-pick="${i}" aria-expanded="false"><span class="st-n" dir="auto">${esc(p.n)}</span>
-        <span class="st-x">${esc(p.t)} · ${p.r ? `⭐ ${p.r} · ` : ""}${esc(p.s)}</span><span class="st-more">מה זה? ▼</span></button><span></span></li>`).join("")}</ol>
+        <span class="st-x">${esc(p.t)} · ${p.r ? `⭐ ${p.r} · ` : ""}${esc(p.s)}${KS_SHORT[p.ks] ? ` · <b class="ks ks-${p.ks}">${KS_SHORT[p.ks]}</b>` : ""}</span><span class="st-more">מה זה? ▼</span></button><span></span></li>`).join("")}</ol>
     <p class="src">נבחרו לפי ביקורות ומדריכים למשפחות ברשת (נובמבר 2026). הדירוג מוצג רק כשנמצא, יחד עם המקור שלו.</p></section>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (!b) return;
@@ -247,7 +266,7 @@ function drawLive() {
     <ol class="stops foods">${LIVE.items.map((p, i) => { const d = here && p.ll ? Math.max(1, Math.round(haversine(here, p.ll) / 80)) : null;
       return `<li><span class="num fnum pk" aria-hidden="true">${p.r || "★"}</span>
       <button class="st-b st-btn" data-live="${i}" aria-expanded="false"><span class="st-n" dir="auto">${esc(p.n)}</span>
-        <span class="st-x">${esc(p.t || "")}${p.r ? ` · ⭐ ${p.r}` : ""}${p.s ? " · " + esc(p.s) : ""}</span><span class="st-more">מה זה? ▼</span></button>
+        <span class="st-x">${esc(p.t || "")}${p.r ? ` · ⭐ ${p.r}` : ""}${p.s ? " · " + esc(p.s) : ""}${KS_SHORT[p.ks] ? ` · <b class="ks ks-${p.ks}">${KS_SHORT[p.ks]}</b>` : ""}</span><span class="st-more">מה זה? ▼</span></button>
       <span class="fmin">${d ? `🚶 ${d}′` : ""}</span></li>`; }).join("")}</ol></section>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-live]"); if (!b || !LIVE) return;
@@ -259,7 +278,7 @@ function liveRequestText() {
   const w = FOOD.where; if (!w) return null;
   const now = new Date(), area = areaFor(w.ll);
   const list = FOOD.items.slice(0, 12).map((x, i) => `${i + 1}. ${x.t.name}${x.t.cuisine ? " (" + x.t.cuisine + ")" : ""} · ${Math.round(x.dist)}m${x.open === true ? " · open" : x.open === false ? " · closed" : ""}${x.t.opening_hours ? " · " + x.t.opening_hours : ""}`).join("\n");
-  return `🍽️ בקשת המלצות אוכל ממשפחת ${FAMILIES[fam]}\n📍 ${w.ll[0].toFixed(5)},${w.ll[1].toFixed(5)}${area ? " (" + area.n + ")" : ""} · ${w.label}\n🕒 ${now.toLocaleString("he-IL", { timeZone: "America/Los_Angeles", weekday: "long", hour: "2-digit", minute: "2-digit" })} (שעון קליפורניה)\n👨‍👩‍👧‍👦 10 אנשים, כולל ילדים\n\nמקומות קרובים מהמפה:\n${list || "(לא נמצאו)"}\n\nבבקשה: המלצות עם דירוג, מידע ותמונות, ועדכון של האפליקציה.`;
+  return `🍽️ בקשת המלצות אוכל ממשפחת ${FAMILIES[fam]}\n📍 ${w.ll[0].toFixed(5)},${w.ll[1].toFixed(5)}${area ? " (" + area.n + ")" : ""} · ${w.label}\n🕒 ${now.toLocaleString("he-IL", { timeZone: "America/Los_Angeles", weekday: "long", hour: "2-digit", minute: "2-digit" })} (שעון קליפורניה)\n👨‍👩‍👧‍👦 10 אנשים, כולל ילדים\n\nמקומות קרובים מהמפה:\n${list || "(לא נמצאו)"}\n\nבבקשה: המלצות עם דירוג, מידע, תמונות, והאם המקום מתאים לישיבה עם ילדים. ולעדכן את האפליקציה.`;
 }
 async function sendToClaude(btn) {
   const txt = liveRequestText(); if (!txt) { toast("קודם מחפשים מסעדות"); return; }

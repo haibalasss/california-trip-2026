@@ -324,3 +324,8 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .askbtn{justify-content:center;padding:10px;background:linear-gradient(135deg,#FFF4D6,#FDE7B0);border-color:#E9C46A;color:#5A3A00;font-weight:700}
 #livetxt{width:100%;font:12px var(--f-mono);border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);direction:rtl}
 .picks.live .sect-title{color:#B7791F}
+
+.ks{font-weight:500}.ks-y{color:var(--ok)}.ks-t{color:var(--warn)}
+.seat{border-radius:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--line)}
+.seat-y{border-color:var(--ok);background:var(--ok-soft)}.seat-t{border-color:var(--warn);background:var(--warn-soft)}
+.seat h4{color:var(--ink)!important}
