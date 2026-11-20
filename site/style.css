@@ -252,3 +252,17 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .ci .actions{margin-top:4px;align-items:center}
 .ci-code{display:inline-flex;gap:6px;align-items:center;font-size:12.5px}
 .ci.open .reveal{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.5);color:#fff}.ci.open .reveal .lbl{color:#fff}
+
+/* stop info */
+.st-btn{border:0;background:none;text-align:right;padding:0;font:inherit;color:inherit;cursor:pointer;display:grid;gap:1px}
+.st-more{font-size:11.5px;color:var(--sea);font-weight:500;margin-top:2px}
+.stops li .sinfo{grid-column:1 / -1}
+.sinfo{display:grid;gap:10px;background:var(--bg);border-radius:12px;padding:12px;margin-top:4px}
+.sinfo h4{margin:0 0 2px;font-family:var(--f-display);font-size:13px;color:var(--sea);letter-spacing:.3px}
+.sinfo p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink)}
+.sinfo .gold{background:linear-gradient(135deg,#FFF4D6,#FDE7B0);border-radius:10px;padding:10px 12px;display:grid;gap:6px}
+.sinfo .gold h4{color:#8A5A00}
+.sinfo .gold h4::before{content:"💡 "}
+.sinfo .gold p{color:#3A2A00}
+.sinfo .gold p + p{border-top:1px dashed rgba(138,90,0,.25);padding-top:6px}
+.next .sinfo{margin-top:6px}

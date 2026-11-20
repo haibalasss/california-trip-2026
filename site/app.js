@@ -244,6 +244,7 @@ function bannerHTML() {
   return Object.entries(FLIGHTS.flights).filter(([, x]) => flightBad(x)).map(([fl, x]) =>
     `<div class="banner"><b>שינוי בטיסה ${esc(fl)}:</b> ${esc(STATUS_HE[x.status] || x.status || "")}${x.depRevised ? ` · המראה ${hhmm(x.depRevised)}` : ""}${x.depGate ? ` · שער ${esc(x.depGate)}` : ""}</div>`).join("");
 }
+let nextInfoOpen = false;
 function nextHTML(d) {
   const stops = d.stops.map((s, i) => [s, i]).filter(([s]) => forFam(s)), done = doneSet(d);
   const rest = stops.filter(([, i]) => !done.has(i));
@@ -253,15 +254,24 @@ function nextHTML(d) {
   return `<section class="next" aria-label="התחנה הבאה">
     <div class="nx-top"><span class="nx-lbl">${isToday ? (done.size ? "עכשיו" : "מתחילים") : "התחנה הראשונה"}</span>${s.t ? `<span class="nx-t">${esc(s.t)}</span>` : ""}</div>
     <div class="nx-n"><span class="nx-i" aria-hidden="true">${s.i || "📍"}</span>${esc(s.n)}</div>${s.x ? `<p>${esc(s.x)}</p>` : ""}
-    <div class="actions"><a class="btn primary" href="${gdest(s.ll)}" target="_blank" rel="noopener">ניווט</a><button class="btn" data-done="${i}">✓ סיימנו, לתחנה הבאה</button></div>
+    <div class="actions"><a class="btn primary" href="${gdest(s.ll)}" target="_blank" rel="noopener">ניווט</a><button class="btn" data-done="${i}">✓ סיימנו, לתחנה הבאה</button>${INFO[s.n] ? `<button class="btn" data-nxinfo="${i}">${nextInfoOpen ? "סגירה" : "ℹ️ מה זה?"}</button>` : ""}</div>
+    ${INFO[s.n] && nextInfoOpen ? infoHTML(INFO[s.n]) : ""}
     ${after ? `<div class="nx-after">אחר כך: ${esc(after[0].n)}</div>` : ""}</section>`;
+}
+const openStops = new Set();
+function infoHTML(inf) {
+  return `<div class="sinfo"><div><h4>מה זה</h4><p>${esc(inf.a)}</p></div><div><h4>מה מחכה שם</h4><p>${esc(inf.e)}</p></div>
+    <div class="gold"><h4>טיפ זהב</h4>${inf.t.map(t => `<p>${esc(t.replace(/^💡\s*/, ""))}</p>`).join("")}</div></div>`;
 }
 function stopsHTML(d) {
   const done = doneSet(d); let n = 0;
   return `<ol class="stops">${d.stops.map((s, i) => { if (!forFam(s)) return ""; n++; const ok = done.has(i);
     return `<li class="${ok ? "ok" : ""}${s.opt ? " opt" : ""}"><button class="num" data-done="${i}" aria-label="${ok ? "בטל סימון" : "סמן כבוצע"}: ${esc(s.n)}">${ok ? "✓" : n}</button>
-      <div class="st-b"><span class="st-n">${s.i ? `<span aria-hidden="true">${s.i}</span> ` : ""}${esc(s.n)}</span>${s.x || s.t ? `<span class="st-x">${s.t ? `<b>${esc(s.t)}</b> ` : ""}${s.x ? esc(s.x) : ""}</span>` : ""}</div>
-      <a class="nav" href="${gdest(s.ll)}" target="_blank" rel="noopener" aria-label="ניווט אל ${esc(s.n)}">➤</a></li>` }).join("")}</ol>`;
+      ${(() => { const inf = INFO[s.n], op = inf && openStops.has(d.d + ":" + i);
+        const body = `<span class="st-n">${s.i ? `<span aria-hidden="true">${s.i}</span> ` : ""}${esc(s.n)}</span>${s.x || s.t ? `<span class="st-x">${s.t ? `<b>${esc(s.t)}</b> ` : ""}${s.x ? esc(s.x) : ""}</span>` : ""}`;
+        return inf ? `<button class="st-b st-btn" data-info="${d.d}:${i}" aria-expanded="${op}">${body}<span class="st-more">${op ? "סגירה ▲" : "מה זה? ▼"}</span></button>` : `<div class="st-b">${body}</div>`; })()}
+      <a class="nav" href="${gdest(s.ll)}" target="_blank" rel="noopener" aria-label="ניווט אל ${esc(s.n)}">➤</a>
+      ${INFO[s.n] && openStops.has(d.d + ":" + i) ? infoHTML(INFO[s.n]) : ""}</li>` }).join("")}</ol>`;
 }
 function remindHTML(d) {
   if (d.d !== today) return "";
@@ -302,7 +312,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.19-8";
+const APP_VERSION = "2026.11.20-1";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -424,7 +434,9 @@ function render() {
 document.addEventListener("click", e => {
   const c = e.target.closest("[data-copy]"); if (c) { copy(c.dataset.copy); return }
   const ci = e.target.closest("[data-ci]"); if (ci) { const x = store.get("checkin", {}); x[ci.dataset.ci] = true; store.set("checkin", x); render(); toast("מעולה, הצ'ק-אין סומן"); return }
-  const dn = e.target.closest("[data-done]"); if (dn) { toggleDone(daysFor(fam)[dayIdx], +dn.dataset.done); return }
+  const inf = e.target.closest("[data-info]"); if (inf) { const k = inf.dataset.info; openStops.has(k) ? openStops.delete(k) : openStops.add(k); render(); return }
+  const nx = e.target.closest("[data-nxinfo]"); if (nx) { nextInfoOpen = !nextInfoOpen; render(); return }
+  const dn = e.target.closest("[data-done]"); if (dn) nextInfoOpen = false; if (dn) { toggleDone(daysFor(fam)[dayIdx], +dn.dataset.done); return }
   const dc = e.target.closest("[data-doc]"); if (dc) { openDoc(dc.dataset.doc); return }
   if (e.target.closest(".reveal")) askUnlock();
 });
