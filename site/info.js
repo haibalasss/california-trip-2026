@@ -329,3 +329,34 @@ const WIKI = {
   "Mandalay Bay, Luxor ו-Excalibur (רשות)": ["Luxor Las Vegas"],
   "Uber לשדה התעופה ← טיסת ערב": ["Harry Reid International Airport"]
 };
+
+/* Search text for each stop in Google Maps / TripAdvisor (opens the place with its photos and reviews) */
+const PLACEQ = {
+  "נחיתה ב-SFO": "San Francisco International Airport", "צ'ק-אין ב-Star Motel": "Star Motel 1727 Lombard St San Francisco",
+  "Crissy Field": "Crissy Field San Francisco", "Golden Gate Bridge": "Golden Gate Bridge Welcome Center",
+  "Powell-Hyde Cable Car": "Powell-Hyde Cable Car San Francisco", "יורדים ב-Hyde & Lombard ← Lombard Street": "Lombard Street San Francisco",
+  "להגיע ל-Pier 33": "Alcatraz Landing Pier 33", "Alcatraz": "Alcatraz Island", "Pier 39 וארוחת צהריים": "Pier 39 San Francisco",
+  "Fisherman's Wharf": "Fisherman's Wharf San Francisco", "Musée Mécanique": "Musee Mecanique San Francisco", "Ghirardelli Square": "Ghirardelli Square",
+  "איסוף הרכב, Fisherman's Wharf": "Hertz 500 Beach Street San Francisco", "תדלוק במריפוסה": "Mariposa California",
+  "Tunnel View": "Tunnel View Yosemite", "Bridalveil Fall": "Bridalveil Fall Yosemite", "צ'ק-אין ב-Yosemite View Lodge": "Yosemite View Lodge El Portal",
+  "Lower Yosemite Fall": "Lower Yosemite Fall Trail", "El Capitan Meadow": "El Capitan Meadow Yosemite", "Valley View": "Valley View Yosemite",
+  "צ'ק-אין ב-Arbor Inn": "Arbor Inn Monterey", "ערב רגוע ב-Old Fisherman's Wharf": "Old Fisherman's Wharf Monterey",
+  "Monterey Bay Aquarium": "Monterey Bay Aquarium", "Cannery Row": "Cannery Row Monterey", "17-Mile Drive: Spanish Bay": "Spanish Bay 17-Mile Drive",
+  "Bird Rock": "Bird Rock 17-Mile Drive", "Lone Cypress": "The Lone Cypress Pebble Beach", "Pebble Beach": "The Lodge at Pebble Beach",
+  "Carmel-by-the-Sea: Ocean Avenue": "Ocean Avenue Carmel-by-the-Sea", "Carmel Beach בשקיעה": "Carmel Beach Carmel-by-the-Sea",
+  "Bixby Creek Bridge": "Bixby Creek Bridge", "נסיעה דרך Big Sur": "Big Sur California", "McWay Falls": "McWay Falls",
+  "Piedras Blancas Elephant Seals": "Elephant Seal Vista Point Piedras Blancas", "צ'ק-אין בדירה": "13455 Maxella Ave Marina del Rey",
+  "ערב, אם מגיעים מוקדם: Venice Beach וה-Skatepark": "Venice Beach Skatepark", "Santa Monica Pier וגלגל הענק": "Pacific Park Santa Monica Pier",
+  "יוצאים מהדירה": "LAX Airport", "החזרת הרכב, Hertz LAX": "Hertz 5251 W 98th St Los Angeles",
+  "Witch's House (Spadena House)": "Spadena House Beverly Hills", "Beverly Hills · Rodeo Drive": "Rodeo Drive Beverly Hills",
+  "נסיעה בין בתי המפורסמים: Holmby Hills": "Holmby Hills Los Angeles", "Bel Air": "Bel Air East Gate Los Angeles", "Sunset Boulevard": "Sunset Strip West Hollywood",
+  "Hollywood Walk of Fame": "Hollywood Walk of Fame", "TCL Chinese Theatre ו-Dolby Theatre": "TCL Chinese Theatre",
+  "The Grove ו-Original Farmers Market": "The Grove Los Angeles", "Calico Ghost Town": "Calico Ghost Town", "Peggy Sue's 50's Diner": "Peggy Sue's 50's Diner Yermo",
+  "EddieWorld (רשות)": "EddieWorld Yermo", "צ'ק-אין ב-New York-New York": "New York-New York Hotel Las Vegas", "Park MGM ← Cosmopolitan": "The Cosmopolitan of Las Vegas",
+  "Bellagio: המזרקות וה-Conservatory": "Fountains of Bellagio", "Big Apple Coaster, אם יש כוח": "The Big Apple Coaster Las Vegas",
+  "Uber ל-Venetian: Grand Canal ו-St. Mark's Square": "Grand Canal Shoppes Venetian Las Vegas", "LINQ Promenade": "The LINQ Promenade Las Vegas",
+  "Caesars Palace ו-Forum Shops": "The Forum Shops at Caesars Palace", "Omega Mart ב-AREA15": "Omega Mart AREA15 Las Vegas",
+  "Fremont Street Experience": "Fremont Street Experience", "Welcome to Fabulous Las Vegas Sign": "Welcome to Fabulous Las Vegas Sign",
+  "FlyOver: Wonders of the American West": "FlyOver Las Vegas", "Mandalay Bay, Luxor ו-Excalibur (רשות)": "Luxor Las Vegas",
+  "Uber לשדה התעופה ← טיסת ערב": "Harry Reid International Airport"
+};

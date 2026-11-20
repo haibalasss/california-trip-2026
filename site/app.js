@@ -326,7 +326,10 @@ function hydrateImages(root) {
   });
 }
 function infoHTML(inf, name) {
-  return `<div class="sinfo">${name && WIKI[name] ? `<div class="simg" data-stop="${esc(name)}"><span class="sk"></span></div>` : ""}<div><h4>מה זה</h4><p>${esc(inf.a)}</p></div><div><h4>מה מחכה שם</h4><p>${esc(inf.e)}</p></div>
+  const q = name && PLACEQ[name];
+  const photos = q ? `<div class="photolinks"><a class="pl g" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}" target="_blank" rel="noopener"><b>📷 תמונות בגוגל מפות</b><span>תמונות וביקורות של מבקרים</span></a>
+      <a class="pl t" href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(q)}" target="_blank" rel="noopener"><b>⭐ TripAdvisor</b><span>תמונות, דירוג וטיפים</span></a></div>` : "";
+  return `<div class="sinfo">${photos}<div><h4>מה זה</h4><p>${esc(inf.a)}</p></div><div><h4>מה מחכה שם</h4><p>${esc(inf.e)}</p></div>
     <div class="gold"><h4>טיפ זהב</h4>${inf.t.map(t => `<p>${esc(t.replace(/^💡\s*/, ""))}</p>`).join("")}</div></div>`;
 }
 function stopsHTML(d) {
@@ -378,7 +381,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.20-4";
+const APP_VERSION = "2026.11.20-5";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
