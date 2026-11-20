@@ -277,47 +277,36 @@ function nextHTML(d) {
 }
 const openStops = new Set();
 /* Place photo: lead image of the stop's Wikipedia article, loaded on the phone (cached for offline by the service worker) */
-const wikiMem = store.get("wikigal", {});
-const SKIP_IMG = /(map|locator|logo|flag|seal_of|icon|svg|diagram|chart|coat_of_arms|signature|location|route|plan\b|\.tif)/i;
-async function wikiGallery(titles) {
-  const out = [], seen = new Set();
-  for (const t of titles) {
-    if (out.length >= 6) break;
-    let list = wikiMem[t];
-    if (list === undefined) {
-      list = [];
-      try {
-        const key = encodeURIComponent(t.replace(/ /g, "_"));
-        const [ml, sm] = await Promise.all([
-          fetch("https://en.wikipedia.org/api/rest_v1/page/media-list/" + key, { signal: tmo(7000) }).then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + key, { signal: tmo(7000) }).then(r => r.ok ? r.json() : null).catch(() => null)
-        ]);
-        const page = sm && sm.content_urls && sm.content_urls.mobile && sm.content_urls.mobile.page;
-        const lead = sm && sm.thumbnail && sm.thumbnail.source;
-        if (lead) list.push({ src: lead.replace(/\/(\d+)px-/, "/960px-"), small: lead, cap: sm.title, page });
-        (ml && ml.items || []).filter(it => it.type === "image" && it.showInGallery !== false && !SKIP_IMG.test(it.title || "")).forEach(it => {
-          const ss = it.srcset || []; const pick = ss.find(x => x.scale === "1.5x") || ss[ss.length - 1] || ss[0]; if (!pick) return;
-          const src = (pick.src.startsWith("//") ? "https:" : "") + pick.src;
-          if (lead && src.split("/").pop().replace(/^\d+px-/, "") === lead.split("/").pop().replace(/^\d+px-/, "")) return;
-          list.push({ src, small: src, cap: (it.caption && it.caption.text) || "", page });
-        });
-        if (!ml && !sm) { list = null; }
-        else { wikiMem[t] = list.slice(0, 8); store.set("wikigal", wikiMem); }
-      } catch (e) { list = null; }
-    }
-    (list || []).forEach(im => { const k = im.src.split("/").pop(); if (!seen.has(k) && out.length < 6) { seen.add(k); out.push(im); } });
-  }
+/* Place photos: modern photos (mostly Flickr) via the Openverse open image search API. No key needed; cached for offline. */
+const photoMem = store.get("ovgal", {});
+const NO_PHOTO = /Hertz|Airport|Maxella|Star Motel|Arbor Inn|LAX/i;
+async function ovSearch(q, extra) {
+  const u = `https://api.openverse.org/v1/images/?q=${encodeURIComponent(q)}&page_size=12&mature=false&aspect_ratio=wide${extra}`;
+  const r = await fetch(u, { signal: tmo(8000) }); if (!r.ok) throw new Error(r.status);
+  return (await r.json()).results || [];
+}
+async function placePhotos(q) {
+  if (photoMem[q]) return photoMem[q];
+  let res = [];
+  try {
+    res = await ovSearch(q, "&source=flickr");
+    if (res.length < 3) res = res.concat(await ovSearch(q, "&excluded_source=wikimedia"));
+  } catch (e) { return []; }
+  const seen = new Set(), out = [];
+  res.forEach(it => { if (out.length >= 6 || seen.has(it.id) || (it.width && it.width < 800)) return; seen.add(it.id);
+    out.push({ src: it.thumbnail || it.url, full: it.url, cap: it.title || "", by: it.creator || "", lic: (it.license || "").toUpperCase(), page: it.foreign_landing_url || it.url }); });
+  if (out.length) { photoMem[q] = out; store.set("ovgal", photoMem); }
   return out;
 }
 function hydrateImages(root) {
-  (root || document).querySelectorAll(".simg[data-stop]:not(.done)").forEach(async el => {
+  (root || document).querySelectorAll(".simg[data-q]:not(.done)").forEach(async el => {
     el.classList.add("done");
-    const imgs = await wikiGallery(WIKI[el.dataset.stop] || []);
+    const imgs = await placePhotos(el.dataset.q);
     if (!imgs.length) { el.remove(); return; }
     el.classList.add("gal-wrap");
-    el.innerHTML = `<div class="gal" tabindex="0" aria-label="תמונות של ${esc(el.dataset.stop)}">${imgs.map((im, i) => `<figure>
-        <img src="${esc(im.src)}" alt="${esc(im.cap || el.dataset.stop)}" loading="${i ? "lazy" : "eager"}" decoding="async" onerror="this.closest('figure').remove()">
-        <figcaption>${im.cap ? `<span>${esc(im.cap.length > 90 ? im.cap.slice(0, 88) + "…" : im.cap)}</span>` : ""}<a href="${esc(im.page || "https://en.wikipedia.org")}" target="_blank" rel="noopener">📷 Wikipedia</a></figcaption></figure>`).join("")}</div>
+    el.innerHTML = `<div class="gal" tabindex="0" aria-label="תמונות">${imgs.map((im, i) => `<figure>
+        <img src="${esc(im.src)}" alt="${esc(im.cap)}" loading="${i ? "lazy" : "eager"}" decoding="async" referrerpolicy="no-referrer" onerror="this.closest('figure').remove()">
+        <figcaption><a href="${esc(im.page)}" target="_blank" rel="noopener">📷 ${esc(im.by || "photo")}${im.lic ? " · " + esc(im.lic) : ""}</a></figcaption></figure>`).join("")}</div>
       ${imgs.length > 1 ? `<span class="gcount">1 / ${imgs.length}</span>` : ""}`;
     const g = el.querySelector(".gal"), c = el.querySelector(".gcount");
     if (c) g.addEventListener("scroll", () => { const figs = [...g.children]; const gr = g.getBoundingClientRect(); let best = 0, bd = 1e9;
@@ -326,9 +315,8 @@ function hydrateImages(root) {
   });
 }
 function infoHTML(inf, name) {
-  const q = name && PLACEQ[name];
-  const photos = q ? `<div class="photolinks"><a class="pl g" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}" target="_blank" rel="noopener"><b>📷 תמונות בגוגל מפות</b><span>תמונות וביקורות של מבקרים</span></a>
-      <a class="pl t" href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(q)}" target="_blank" rel="noopener"><b>⭐ TripAdvisor</b><span>תמונות, דירוג וטיפים</span></a></div>` : "";
+  const q = name && PLACEQ[name] && !NO_PHOTO.test(PLACEQ[name]) ? PLACEQ[name] : null;
+  const photos = q ? `<div class="simg" data-q="${esc(q)}"><span class="sk"></span></div>` : "";
   return `<div class="sinfo">${photos}<div><h4>מה זה</h4><p>${esc(inf.a)}</p></div><div><h4>מה מחכה שם</h4><p>${esc(inf.e)}</p></div>
     <div class="gold"><h4>טיפ זהב</h4>${inf.t.map(t => `<p>${esc(t.replace(/^💡\s*/, ""))}</p>`).join("")}</div></div>`;
 }
@@ -381,7 +369,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.20-5";
+const APP_VERSION = "2026.11.20-6";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
