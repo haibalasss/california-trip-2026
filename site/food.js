@@ -92,7 +92,7 @@ async function loadFood() {
     if (els.length < 6 && FOOD.radius < 1600) els = await overpass(where.ll, 1600);
     const items = els.map(e => { const t = e.tags || {}, ll = e.lat != null ? [e.lat, e.lon] : e.center ? [e.center.lat, e.center.lon] : null; if (!ll) return null;
       const dist = haversine(where.ll, ll); return { t, ll, dist, open: openNow(t.opening_hours), score: familyScore(t, dist) }; }).filter(Boolean);
-    items.forEach(x => { x.rank = x.score + (x.open === true ? 1.5 : x.open === false ? -4 : 0); });
+    items.forEach(x => { x.rank = x.score + (x.open === true ? 1.5 : x.open === false ? -4 : 0) + (pickFor(x.t.name) ? 3 : 0); });
     items.sort((a, b) => b.rank - a.rank);
     FOOD.items = items.slice(0, 15); FOOD.at = new Date(); FOOD.status = "done";
   } catch (e) {
@@ -183,6 +183,8 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-food
 
 function drawFood() {
   const box = document.getElementById("foodlist"); if (!box) return;
+  const pk = document.getElementById("foodpicks");
+  if (pk) { const ll = FOOD.where ? FOOD.where.ll : (FOOD.status === "error" || FOOD.status === "idle" ? nextStopLL().ll : null); const h = ll ? picksHTML(ll) : ""; if (pk.dataset.h !== h) { pk.innerHTML = h; pk.dataset.h = h; } }
   const loc = FOOD.where ? `<p class="src">${FOOD.mode === "gps" ? "📍 ליד המיקום שלך" : "🧭 ליד: " + esc(FOOD.where.label)}${FOOD.at ? " · עודכן ב-" + FOOD.at.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) : ""}</p>` : "";
   if (FOOD.status === "loading") { box.innerHTML = `<div class="fload"><span class="sk"></span>${FOOD.mode === "gps" ? "מאתר מיקום ומחפש מסעדות קרובות…" : "מחפש מסעדות ליד התחנה…"}</div>`; return; }
   if (FOOD.status === "error") { const [m, d] = FOOD.err.split("\n"); box.innerHTML = `<div class="alert"><span class="dot"></span><div>${esc(m)}${d ? `<div class="src" dir="ltr" style="margin-top:4px">${esc(d)}</div>` : ""}</div></div>`; return; }
@@ -190,20 +192,48 @@ function drawFood() {
   if (!FOOD.items.length) { box.innerHTML = loc + `<p class="src">לא נמצאו מקומות אוכל במרחק הליכה.</p>`; return; }
   FOOD_OPEN.clear();
   const icon = t => ({ pizza: "🍕", burger: "🍔", mexican: "🌮", tacos: "🌮", ice_cream: "🍦", donut: "🍩", sushi: "🍣", japanese: "🍱", chinese: "🥡", italian: "🍝", pancake: "🥞", breakfast: "🥞", coffee_shop: "☕", seafood: "🦞", chicken: "🍗", sandwich: "🥪", bakery: "🥐", noodle: "🍜", ramen: "🍜", thai: "🍜", indian: "🍛", hot_dog: "🌭" })[cuisineList(t)[0]] || ({ cafe: "☕", ice_cream: "🍦", fast_food: "🍟" })[t.amenity] || "🍽️";
-  box.innerHTML = loc + `<ol class="stops foods">${FOOD.items.map((x, i) => { const t = x.t, min = Math.max(1, Math.round(x.dist / 80));
+  box.innerHTML = loc + `<h3 class="sect-title">📍 עוד מקומות קרובים</h3><ol class="stops foods">${FOOD.items.map((x, i) => { const t = x.t, min = Math.max(1, Math.round(x.dist / 80));
     const cu = cuisineList(t).map(c => CUISINE_HE[c]).filter(Boolean).slice(0, 2).join(" · ");
     return `<li><span class="num fnum" aria-hidden="true">${icon(t)}</span>
       <button class="st-b st-btn" data-food="${i}" aria-expanded="false"><span class="st-n" dir="auto">${esc(t.name)}</span>
-        <span class="st-x">${esc(AMENITY_HE[t.amenity] || "")}${cu ? " · " + esc(cu) : ""}${x.open === true ? ` · <b class="op">פתוח</b>` : x.open === false ? ` · <b class="cl">סגור</b>` : ""}${x.score >= 2.5 ? ` · <b class="famb2">👨‍👩‍👧 למשפחות</b>` : ""}</span>
+        <span class="st-x">${esc(AMENITY_HE[t.amenity] || "")}${cu ? " · " + esc(cu) : ""}${x.open === true ? ` · <b class="op">פתוח</b>` : x.open === false ? ` · <b class="cl">סגור</b>` : ""}${x.score >= 2.5 ? ` · <b class="famb2">👨‍👩‍👧 למשפחות</b>` : ""}${pickFor(t.name) ? ` · <b class="stars">⭐ ${pickFor(t.name).r || "מומלץ"}</b>` : ""}</span>
         <span class="st-more">מה זה? ▼</span></button>
       <span class="fmin">🚶 ${min}′</span></li>`; }).join("")}</ol>
     <p class="src">הנתונים מ-OpenStreetMap. התיאור והטיפ נבנים מפרטי המקום שבמפה, כמו סוג המטבח, שעות, ישיבה וכיסא תינוק, ולא מביקורות. כשאין תמונה של המקום עצמו, מוצגות תמונות להמחשה של סוג האוכל.</p>`;
 }
+function areaFor(ll) {
+  let best = null, bd = 1e12;
+  FOOD_AREAS.forEach(a => { const d = haversine(ll, a.ll); if (d < a.km * 1000 && d < bd) { bd = d; best = a; } });
+  return best;
+}
+const normName = n => (n || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+function pickFor(name) { const k = normName(name); return k.length > 3 ? FOOD_PICKS.find(p => { const pk = normName(p.n.split("(")[0]); return pk.includes(k) || k.includes(pk); }) : null; }
+function pickInfoHTML(p) {
+  return `<div class="sinfo"><div class="simg" data-q="${esc(p.q)}" data-note="תמונה להמחשה"><span class="sk"></span></div>
+    <div><h4>מה זה</h4><p>${esc(p.w)}</p></div>
+    <div><h4>דירוג ומקור</h4><p>${p.r ? `<b class="stars">⭐ ${p.r}</b> · ` : ""}${esc(p.s)}</p></div>
+    <div class="gold"><h4>טיפ זהב</h4><p>${esc(p.k)}</p></div>
+    <div class="actions"><a class="btn primary" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.n + ", " + p.c)}" target="_blank" rel="noopener">🧭 ניווט</a></div></div>`;
+}
+function picksHTML(ll) {
+  const a = ll && areaFor(ll); if (!a) return "";
+  const list = FOOD_PICKS.map((p, i) => [p, i]).filter(([p]) => p.a === a.id);
+  return `<section class="picks"><h3 class="sect-title">⭐ מומלצים באזור: ${esc(a.n)}</h3>
+    <ol class="stops foods">${list.map(([p, i]) => `<li><span class="num fnum pk" aria-hidden="true">${p.r ? p.r : "★"}</span>
+      <button class="st-b st-btn" data-pick="${i}" aria-expanded="false"><span class="st-n" dir="auto">${esc(p.n)}</span>
+        <span class="st-x">${esc(p.t)} · ${p.r ? `⭐ ${p.r} · ` : ""}${esc(p.s)}</span><span class="st-more">מה זה? ▼</span></button><span></span></li>`).join("")}</ol>
+    <p class="src">נבחרו לפי ביקורות ומדריכים למשפחות ברשת (נובמבר 2026). הדירוג מוצג רק כשנמצא, יחד עם המקור שלו.</p></section>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-pick]"); if (!b) return;
+  const li = b.closest("li"), p = FOOD_PICKS[+b.dataset.pick], old = li.querySelector(".sinfo"), open = !old;
+  b.setAttribute("aria-expanded", open); b.querySelector(".st-more").textContent = open ? "סגירה ▲" : "מה זה? ▼";
+  if (old) old.remove(); else { li.insertAdjacentHTML("beforeend", pickInfoHTML(p)); hydrateImages(li); } });
+
 function renderFood() {
   return `<section class="group"><h2>🍽️ אוכל קרוב, במרחק הליכה</h2>
     <div class="seg" role="group" aria-label="חיפוש לפי"><button class="segb" data-fm="gps" aria-pressed="${FOOD.mode === "gps"}">📍 לידי עכשיו</button><button class="segb" data-fm="stop" aria-pressed="${FOOD.mode === "stop"}">🧭 ליד התחנה הבאה</button></div>
     <button class="btn primary fsearch" id="foodgo" type="button">${FOOD.status === "done" ? "🔄 חיפוש מחדש" : "חיפוש מסעדות"}</button>
-    <div id="foodlist"></div></section>`;
+    <div id="foodpicks"></div><div id="foodlist"></div></section>`;
 }
 function initFood() {
   document.querySelectorAll("[data-fm]").forEach(b => b.onclick = () => { FOOD.mode = b.dataset.fm; store.set("foodmode", FOOD.mode); document.querySelectorAll("[data-fm]").forEach(x => x.setAttribute("aria-pressed", x === b)); loadFood(); });

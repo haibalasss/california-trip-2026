@@ -1,6 +1,6 @@
 /* Offline support: the app shell opens instantly from cache and refreshes in the background. */
-const V = "trip-v21";
-const SHELL = ["./", "index.html", "style.css", "data.js", "info.js", "scenes.js", "app.js", "food.js", "vault.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png"];
+const V = "trip-v22";
+const SHELL = ["./", "index.html", "style.css", "data.js", "info.js", "scenes.js", "app.js", "food-picks.js", "food.js", "vault.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== "rt").map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 const netFirst = req => fetch(req).then(r => { const c = r.clone(); caches.open("rt").then(x => x.put(req, c)); return r; }).catch(() => caches.match(req));

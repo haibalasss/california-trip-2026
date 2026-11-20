@@ -314,3 +314,8 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .foods .st-x .op{color:var(--ok)}.foods .st-x .cl{color:var(--bridge)}.foods .st-x .famb2{color:var(--ok);font-weight:500}
 .fdesc{font-size:12.5px;color:var(--muted);margin-top:4px!important}
 .sinfo .actions{margin-top:2px}
+
+.picks{display:grid;gap:8px}
+.fnum.pk{font:800 13px var(--f-display);color:#8A5A00;background:linear-gradient(135deg,#FFF4D6,#FDE7B0);border-radius:50%;width:30px;height:30px}
+.stars{color:#B7791F;font-weight:700}
+#foodlist .sect-title{margin-top:6px}
