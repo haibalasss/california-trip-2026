@@ -182,7 +182,8 @@ function renderStrip() {
   s.innerHTML = ds.map((d, i) => { const w = wxFor(d.d, d.wx[0]); return `<button class="chip" role="tab" aria-selected="${i === dayIdx}" data-i="${i}">
     ${d.d === today ? '<span class="today">היום</span>' : ""}<b>${+d.d.slice(8)}</b><span>${d.dow}</span>${w ? `<i aria-hidden="true">${wmo(w.c)[0]}</i>` : `<i aria-hidden="true">·</i>`}</button>` }).join("");
   s.querySelectorAll(".chip").forEach(c => c.onclick = () => { dayIdx = +c.dataset.i; render(); window.scrollTo({ top: 0 }) });
-  const sel = s.querySelector('[aria-selected="true"]'); if (sel) sel.scrollIntoView({ inline: "center", block: "nearest" });
+  const sel = s.querySelector('[aria-selected="true"]');
+  if (sel) { const r = sel.getBoundingClientRect(), sr = s.getBoundingClientRect(); s.scrollBy({ left: (r.left + r.width / 2) - (sr.left + sr.width / 2) }); } // horizontal only, never moves the page
 }
 function wxHTML(d) {
   const rows = d.wx.map(l => {
@@ -245,6 +246,22 @@ function bannerHTML() {
     `<div class="banner"><b>שינוי בטיסה ${esc(fl)}:</b> ${esc(STATUS_HE[x.status] || x.status || "")}${x.depRevised ? ` · המראה ${hhmm(x.depRevised)}` : ""}${x.depGate ? ` · שער ${esc(x.depGate)}` : ""}</div>`).join("");
 }
 let nextInfoOpen = false;
+/* Open / close a stop card in place, without redrawing the page */
+function toggleInfo(btn) {
+  const k = btn.dataset.info, li = btn.closest("li"), [, i] = k.split(":"), d = daysFor(fam)[dayIdx], inf = INFO[d.stops[+i].n];
+  const open = !openStops.has(k);
+  open ? openStops.add(k) : openStops.delete(k);
+  btn.setAttribute("aria-expanded", open);
+  btn.querySelector(".st-more").textContent = open ? "סגירה ▲" : "מה זה? ▼";
+  const old = li.querySelector(".sinfo"); if (old) old.remove();
+  if (open) { li.insertAdjacentHTML("beforeend", infoHTML(inf)); const box = li.querySelector(".sinfo"); requestAnimationFrame(() => { const r = box.getBoundingClientRect(); if (r.bottom > innerHeight) box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }); }
+}
+function toggleNextInfo(btn) {
+  const sec = btn.closest(".next"), d = daysFor(fam)[dayIdx], inf = INFO[d.stops[+btn.dataset.nxinfo].n];
+  nextInfoOpen = !nextInfoOpen; btn.textContent = nextInfoOpen ? "סגירה" : "ℹ️ מה זה?";
+  const old = sec.querySelector(".sinfo"); if (old) old.remove();
+  if (nextInfoOpen) sec.querySelector(".actions").insertAdjacentHTML("afterend", infoHTML(inf));
+}
 function nextHTML(d) {
   const stops = d.stops.map((s, i) => [s, i]).filter(([s]) => forFam(s)), done = doneSet(d);
   const rest = stops.filter(([, i]) => !done.has(i));
@@ -312,7 +329,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.20-1";
+const APP_VERSION = "2026.11.20-2";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -434,8 +451,8 @@ function render() {
 document.addEventListener("click", e => {
   const c = e.target.closest("[data-copy]"); if (c) { copy(c.dataset.copy); return }
   const ci = e.target.closest("[data-ci]"); if (ci) { const x = store.get("checkin", {}); x[ci.dataset.ci] = true; store.set("checkin", x); render(); toast("מעולה, הצ'ק-אין סומן"); return }
-  const inf = e.target.closest("[data-info]"); if (inf) { const k = inf.dataset.info; openStops.has(k) ? openStops.delete(k) : openStops.add(k); render(); return }
-  const nx = e.target.closest("[data-nxinfo]"); if (nx) { nextInfoOpen = !nextInfoOpen; render(); return }
+  const inf = e.target.closest("[data-info]"); if (inf) { toggleInfo(inf); return }
+  const nx = e.target.closest("[data-nxinfo]"); if (nx) { toggleNextInfo(nx); return }
   const dn = e.target.closest("[data-done]"); if (dn) nextInfoOpen = false; if (dn) { toggleDone(daysFor(fam)[dayIdx], +dn.dataset.done); return }
   const dc = e.target.closest("[data-doc]"); if (dc) { openDoc(dc.dataset.doc); return }
   if (e.target.closest(".reveal")) askUnlock();
