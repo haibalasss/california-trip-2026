@@ -31,10 +31,10 @@ jobs:
             echo "skip=1" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: steps.win.outputs.skip != '1'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         if: steps.win.outputs.skip != '1'
         with:
           node-version: 20
@@ -47,7 +47,7 @@ jobs:
       - uses: actions/configure-pages@v5
         if: steps.win.outputs.skip != '1'
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         if: steps.win.outputs.skip != '1'
         with:
           path: site
@@ -63,8 +63,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
       - name: Read flight status (FlightAware / FlightStats)
