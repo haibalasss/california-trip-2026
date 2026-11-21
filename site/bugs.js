@@ -39,9 +39,9 @@ function drawBugList() {
   for (const t of INBOX) if (!seen.has(t.id)) { seen.add(t.id); all.push({ ...t, s: "open" }); }
   for (const t of bugQ()) if (!seen.has(t.id)) { seen.add(t.id); all.push({ ...t, s: "queued" }); }
   if (!all.length) { el.innerHTML = `<p>עוד אין טיקטים.</p>`; return; }
-  const lab = { open: ["🔴", "פתוח"], fixed: ["✅", "תוקן"], queued: ["⏳", "ממתין לאינטרנט, יישמר אוטומטית"], wont: ["⚪", "לא יתוקן"] };
+  const lab = { open: ["🔴", "פתוח"], fixed: ["✅", "תוקן"], queued: ["⏳", "ממתין לאינטרנט, יישמר אוטומטית"], info: ["🟡", "המפתח צריך עוד פרטים"], notabug: ["🙅", "לא באג, לפי המפתח"], wont: ["⚪", "לא יתוקן"] };
   all.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
-  el.innerHTML = all.map(b => { const [i, l] = lab[b.s] || lab.open; return `<li><div><b>${i} ${esc(b.t)}</b><span class="bmeta">#${esc(b.id)} · נפתח ע"י <b>${esc(b.by)}</b> · ${l}</span>${b.fix ? `<span class="bfix">🔧 ${esc(b.fix)}</span>` : ""}</div></li>`; }).join("");
+  el.innerHTML = all.map(b => { const [i, l] = lab[b.s] || lab.open; return `<li><div><b>${i} ${esc(b.t)}</b><span class="bmeta">#${esc(b.id)} · נפתח ע"י <b>${esc(b.by)}</b> · ${l}</span>${b.r ? `<span class="bdev">👨‍💻 המפתח: ${esc(b.r)}</span>` : ""}${b.fix ? `<span class="bfix">🔧 ${esc(b.fix)}</span>` : ""}</div></li>`; }).join("");
 }
 function openBugSheet() {
   const s = $("#bugsheet"); s.hidden = false;
