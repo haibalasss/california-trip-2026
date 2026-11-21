@@ -1,6 +1,6 @@
 /* Bug tickets: anyone in the family opens a ticket (name required), it is sent to Hai via the phone's share sheet / WhatsApp,
    Hai pastes it to Claude, and Claude publishes the status in bugs.json so everyone sees the list. */
-const BUG_NAMES = ["חי", "מור", "מאור", "רום", "אדם"];
+const BUG_NAMES = ["חי", "מור", "מאור", "רום", "אדם", "עדי", "אורי", "פלג", "ליאן", "איציק", "נופר"];
 let BUGS = [];
 async function loadBugs() {
   try { const r = await fetch("bugs.json?t=" + Date.now(), { cache: "no-store" }); if (r.ok) BUGS = await r.json(); } catch (e) { }
