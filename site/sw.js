@@ -1,5 +1,5 @@
 /* Offline support: the app shell opens instantly from cache and refreshes in the background. */
-const V = "trip-v44";
+const V = "trip-v45";
 const SHELL = ["./", "index.html", "style.css", "data.js", "info.js", "scenes.js", "app.js", "food-picks.js", "food.js", "stories.js", "discover.js", "bugs.js", "vault.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V && k !== "rt").map(k => caches.delete(k)))).then(() => self.clients.claim())); });

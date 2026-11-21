@@ -16,7 +16,7 @@ const tmo = ms => (AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
 
 /* ---------- state ---------- */
 let fam = store.get("fam", "b");
-let view = store.get("view", "days");
+let view = store.get("view", "days"); if (view === "back") view = "days";
 const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 const daysFor = f => DAYS.filter(d => !d.fam || d.fam === f);
 let dayIdx = 0;
@@ -375,7 +375,7 @@ function renderDay() {
    <section class="route"><div class="route-h"><h3 class="sect-title">מסלול היום</h3>
      <div class="actions"><button class="btn" id="mapbtn" type="button">🗺️ מפה</button><a class="btn" href="${routeURL(d)}" target="_blank" rel="noopener">מסלול בגוגל מפות</a></div></div>
      <div id="map" class="map" hidden></div>${stopsHTML(d)}
-     ${prep ? `<div class="prep"><b>להכנה:</b> ${esc(prep)}</div>` : ""}</section>
+     ${prep ? `<div class="prep"><b>להכנה:</b> ${esc(prep)}</div>` : ""}${d.log ? `<div class="prep daylog">${esc(d.log)}</div>` : ""}</section>
    ${d.planB ? `<details class="more" id="pb-${d.d}"><summary>תוכנית ב'</summary><div class="note">${d.planB}</div></details>` : ""}
    ${roads ? `<div class="roads">${roads.map(([t, u]) => `<a class="btn" href="${u}" target="_blank" rel="noopener">🚧 ${esc(t)}</a>`).join("")}</div>` : ""}
    ${items.length ? `<details class="more" id="bk-${d.d}"><summary>הזמנות ופרטים (${items.length})</summary><div class="cards">${items.map(itemHTML).join("")}</div></details>` : ""}
@@ -389,7 +389,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.21-18";
+const APP_VERSION = "2026.11.21-19";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -484,24 +484,6 @@ function renderPack() {
    <section class="ver"><span>גרסה ${APP_VERSION}</span><button class="btn" id="updbtn" type="button">🔄 לבדוק עדכונים</button></section>`;
 }
 
-// ספירה לאחור: הן חוזרות ב-1:34 בצהריים, שעון קליפורניה (21/11/2026)
-const BACK_AT = Date.parse("2026-11-21T13:34:00-08:00");
-function backFmt(ms) {
-  const t = Math.floor(Math.abs(ms) / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60, p = n => String(n).padStart(2, "0");
-  return (h ? h + ":" + p(m) : m) + ":" + p(sec);
-}
-function backCD() {
-  const ms = BACK_AT - Date.now();
-  return ms > 0 ? `<b dir="ltr">${backFmt(ms + 999)}</b><span>עד שהן חוזרות</span>`
-    : `<strong class="late">😱 אוי לא, הן מאחרות!</strong><b dir="ltr" class="late">+${backFmt(ms)}</b><span>זה כמה זמן הן מאחרות, והשעון ממשיך לספור</span>`;
-}
-function renderBack() {
-  return `<section class="group back"><h2>מתי הן חוזרות?</h2>
-   <p class="src">ב-1:34 בצהריים, שעון קליפורניה (23:34 בישראל).</p>
-   <div class="cd" id="cd" aria-live="polite">${backCD()}</div></section>`;
-}
-setInterval(() => { if (view !== "back") return; const el = $("#cd"); if (el) el.innerHTML = backCD(); }, 1000);
-
 let heroEnter = true, lastKey = "";
 function render() {
   if (window.speechSynthesis && typeof ttsOn !== "undefined" && ttsOn) { speechSynthesis.cancel(); ttsOn = false; }
@@ -518,7 +500,7 @@ function render() {
   const open = [...document.querySelectorAll("details")].map(x => [x.id, x.open]);
   const mapOpen = !$("#map")?.hidden;
   if (mapInst) { mapInst.remove(); mapInst = null; }
-  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : view === "back" ? renderBack() : renderPack();
+  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : renderPack();
   if (view === "food") initFood();
   open.forEach(([id, o]) => { const el = id && document.getElementById(id); if (el) el.open = o; });
   hydrateImages($("#view"));
