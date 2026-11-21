@@ -192,7 +192,7 @@ function routeURL(d) {
 
 /* ---------- render pieces ---------- */
 function renderStrip() {
-  const s = $("#strip"); s.hidden = view !== "days"; const ds = daysFor(fam);
+  const s = $("#strip"); s.hidden = view !== "days" && view !== "discover"; const ds = daysFor(fam);
   s.innerHTML = ds.map((d, i) => { const w = wxFor(d.d, d.wx[0]); return `<button class="chip" role="tab" aria-selected="${i === dayIdx}" data-i="${i}">
     ${d.d === today ? '<span class="today">היום</span>' : ""}<b>${+d.d.slice(8)}</b><span>${d.dow}</span>${w ? `<i aria-hidden="true">${wmo(w.c)[0]}</i>` : `<i aria-hidden="true">·</i>`}</button>` }).join("");
   s.querySelectorAll(".chip").forEach(c => c.onclick = () => { dayIdx = +c.dataset.i; render(); window.scrollTo({ top: 0 }) });
@@ -389,7 +389,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.21-1";
+const APP_VERSION = "2026.11.21-2";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -499,7 +499,7 @@ function render() {
   const open = [...document.querySelectorAll("details")].map(x => [x.id, x.open]);
   const mapOpen = !$("#map")?.hidden;
   if (mapInst) { mapInst.remove(); mapInst = null; }
-  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : renderPack();
+  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : renderPack();
   if (view === "food") initFood();
   open.forEach(([id, o]) => { const el = id && document.getElementById(id); if (el) el.open = o; });
   hydrateImages($("#view"));

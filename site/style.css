@@ -333,3 +333,10 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .wxnow{color:var(--ink)!important;font-size:13.5px!important}.wxnow b{font-family:var(--f-display);font-size:15px}
 .wxn .hl{font-size:10px}
 .wxold{color:var(--warn);font-weight:500}
+
+/* discover */
+.dchips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.dchips::-webkit-scrollbar{display:none}
+.dchip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:12.5px;color:var(--ink)}
+.dchip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.disc li{grid-template-columns:30px 1fr 34px}
+.heart{border:0;background:none;font-size:19px;padding:0;width:34px;height:34px}
