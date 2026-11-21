@@ -352,3 +352,10 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .story-b.open{max-height:none}.story-b.open::after{display:none}
 .story-b p{margin:0;font-size:14.5px;line-height:1.65}
 .story .linkbtn{color:#8A5A00;justify-self:start}
+
+/* Hai's dishes + must-try */
+.hai{background:linear-gradient(135deg,#FDECEC,#FBE0D6);border:1px solid #F2B8A8;border-radius:10px;padding:10px 12px;display:grid;gap:6px}
+.hai h4{color:#A63A28!important}.hai p{color:#3A1A10!important}.hai b{font-weight:700}.hai .muted{color:#7A5A50!important;font-style:italic}
+.must-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.fnum.mk{font-size:18px;background:linear-gradient(135deg,#FFE3D6,#FFC9B0);border-radius:50%;width:30px;height:30px}
+.verdict{border-radius:10px;padding:8px 10px;background:var(--surface);border:1px dashed var(--line)}
