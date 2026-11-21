@@ -389,7 +389,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.21-17";
+const APP_VERSION = "2026.11.21-18";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -540,6 +540,20 @@ document.addEventListener("click", e => {
   if (e.target.closest(".reveal")) askUnlock();
 });
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => { view = t.dataset.view; store.set("view", view); render(); window.scrollTo({ top: 0 }) });
+/* Swipe between tabs (ticket #112122073o). RTL: finger moving right = next tab (to the left), moving left = previous.
+   Ignored when the swipe starts on something that scrolls sideways, a map, a form field or an open sheet. */
+(function swipeTabs() {
+  let sx = 0, sy = 0, st = 0, ok = false;
+  const scrollsX = el => { for (; el && el !== document.body; el = el.parentElement) { if (el.matches?.(".leaflet-container,input,textarea,select,.scrim,.docview")) return true; const o = getComputedStyle(el).overflowX; if ((o === "auto" || o === "scroll") && el.scrollWidth > el.clientWidth + 2) return true; } return false; };
+  addEventListener("touchstart", e => { const t = e.touches[0]; ok = e.touches.length === 1 && !scrollsX(e.target); sx = t.clientX; sy = t.clientY; st = Date.now(); }, { passive: true });
+  addEventListener("touchend", e => {
+    if (!ok) return; ok = false;
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < 2 * Math.abs(dy) || Date.now() - st > 700) return;
+    const tabs = [...document.querySelectorAll(".tab")], i = tabs.findIndex(x => x.dataset.view === view), n = tabs[i + (dx > 0 ? 1 : -1)];
+    if (n) { n.click(); n.scrollIntoView({ inline: "nearest", block: "nearest" }); }
+  }, { passive: true });
+})();
 document.querySelectorAll(".famb").forEach(b => b.onclick = () => { if (fam === b.dataset.fam) return; fam = b.dataset.fam; store.set("fam", fam); pickToday(); render(); window.scrollTo({ top: 0 }); toast("משפחת " + FAMILIES[fam]); });
 
 render();

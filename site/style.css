@@ -382,3 +382,6 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .buglist .bmeta{color:var(--muted);font-size:12.5px}
 .buglist .bfix{font-size:13px}
 .buglist .bdev{font-size:13px;background:var(--bg);border-radius:8px;padding:6px 8px;margin-top:2px}
+.bugkind{display:flex;gap:8px}
+.bugkind button{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-weight:600}
+.bugkind button[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:var(--on-sea)}
