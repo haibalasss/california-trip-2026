@@ -1,33 +1,30 @@
-/* Bug tickets: anyone opens a ticket (name required). It is saved in a shared inbox (jsonblob.com, no account needed),
+/* Bug tickets: anyone opens a ticket (name required). It is posted to a shared inbox (an ntfy.sh topic, free, no account),
    a GitHub Action copies new tickets into site/bugs.json in git every 15 minutes, and Claude reads and marks them there.
    Nothing is sent to anyone. Tickets wait in a queue on the phone until the inbox confirms them. */
-const BUG_API = "https://jsonblob.com/api/jsonBlob/";
+const NTFY = "https://ntfy.sh/";
 const BUG_NAMES = ["חי", "מור", "מאור", "רום", "אדם", "עדי", "אורי", "פלג", "ליאן", "איציק", "נופר"];
 let BUGS = [], INBOX = [];
 const bugQ = () => store.get("bugq", []);
 async function bugDB() {
-  if (bugDB.id) return bugDB.id;
+  if (bugDB.topic) return bugDB.topic;
   const r = await fetch("bugs-db.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) return null;
-  return bugDB.id = (await r.json()).id || null;
+  return bugDB.topic = (await r.json()).topic || null;
 }
-async function bugInbox(id) {
-  const r = await fetch(BUG_API + id, { cache: "no-store", headers: { Accept: "application/json" } });
+async function bugInbox(topic) {
+  const r = await fetch(NTFY + topic + "/json?poll=1&since=all", { cache: "no-store" });
   if (!r.ok) throw new Error("inbox " + r.status);
-  const j = await r.json(); return Array.isArray(j.tickets) ? j.tickets : [];
+  return (await r.text()).split("\n").filter(Boolean).map(l => { try { const m = JSON.parse(l); return m.event === "message" ? JSON.parse(m.message) : null; } catch (e) { return null; } }).filter(t => t && t.id);
 }
-/* Push queued tickets to the inbox; a ticket leaves the queue only after it is read back from the inbox. */
+/* Post queued tickets; a ticket leaves the phone's queue only after the inbox accepted it. */
 async function flushBugs() {
   if (flushBugs.busy) return; flushBugs.busy = true;
   try {
-    const id = await bugDB(); if (!id) return;
-    let q = bugQ();
-    INBOX = await bugInbox(id);
-    const missing = q.filter(t => !INBOX.some(x => x.id === t.id));
-    if (missing.length) {
-      const r = await fetch(BUG_API + id, { method: "PUT", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ tickets: [...INBOX, ...missing] }) });
-      if (r.ok) INBOX = await bugInbox(id);
+    const topic = await bugDB(); if (!topic) return;
+    for (const t of bugQ()) {
+      const r = await fetch(NTFY + topic, { method: "POST", body: JSON.stringify(t) });
+      if (r.ok) { INBOX.push(t); store.set("bugq", bugQ().filter(x => x.id !== t.id)); }
     }
-    q = bugQ().filter(t => !INBOX.some(x => x.id === t.id)); store.set("bugq", q);
+    const got = await bugInbox(topic); INBOX = [...got, ...INBOX.filter(t => !got.some(g => g.id === t.id))];
   } catch (e) { } finally { flushBugs.busy = false; drawBugList(); }
 }
 async function loadBugs() {
@@ -75,7 +72,7 @@ async function sendBug(ev) {
   <label>מי פותח את הטיקט? <em>(חובה)</em><input id="bugby" list="bugnames" maxlength="30" placeholder="השם שלך"></label>
   <datalist id="bugnames">${BUG_NAMES.map(n => `<option value="${n}">`).join("")}</datalist>
   <label>מה הבעיה?<input id="bugt" maxlength="90" placeholder="למשל: מזג האוויר לא מתעדכן"></label>
-  <label>פרטים (לא חובה)<textarea id="bugd" rows="3" placeholder="מה עשיתם, מה ציפיתם שיקרה ומה קרה בפועל"></textarea></label>
+  <label>פרטים (לא חובה)<textarea id="bugd" rows="3" maxlength="1000" placeholder="מה עשיתם, מה ציפיתם שיקרה ומה קרה בפועל"></textarea></label>
   <p class="bugctx">לשונית: <b id="bugtab"></b> · הגרסה, הטלפון והשעה מצורפים אוטומטית.</p>
   <div class="err" id="bugerr" role="alert"></div>
   <div class="btns"><button type="button" id="bugcancel">סגירה</button><button type="submit" class="go">שמירת הטיקט</button></div>

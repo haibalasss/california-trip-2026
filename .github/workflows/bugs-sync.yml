@@ -24,7 +24,7 @@ jobs:
         run: node scripts/bugs-sync.mjs
       - name: Commit if anything changed
         run: |
-          git add site/bugs.json site/bugs-db.json
+          git add site/bugs.json
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git -c user.name="trip-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "Bug tickets: sync from app"
           git pull --rebase -q && git push
