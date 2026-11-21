@@ -17,7 +17,9 @@ const tmo = ms => (AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
 /* ---------- state ---------- */
 let fam = store.get("fam", "b");
 let view = store.get("view", "days"); if (view === "back") view = "days";
-const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+let today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+/* The app can stay open past midnight: keep "today" current (California date). */
+function refreshToday() { const t = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }); if (t !== today) { today = t; if (typeof render === "function") render(); } }
 const daysFor = f => DAYS.filter(d => !d.fam || d.fam === f);
 let dayIdx = 0;
 function pickToday() { const ds = daysFor(fam); dayIdx = Math.max(0, ds.findIndex(d => d.d === today)); if (today > ds[ds.length - 1].d) dayIdx = ds.length - 1; }
@@ -123,7 +125,8 @@ async function loadWeather(force) {
   if (view === "days") render();
 }
 let WXFAIL = false;
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadWeather(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { refreshToday(); loadWeather(); } });
+setInterval(refreshToday, 60000);
 const fF = c => Math.round(c * 9 / 5 + 32);
 /* What to wear, derived from the day's forecast (live when available) */
 function dress(w) {
@@ -210,9 +213,9 @@ function wxHTML(d) {
     <div class="wxn"><b>${w.hi}° / ${w.lo}°</b><span>${fF(w.hi)}°F / ${fF(w.lo)}°F</span><span class="hl">מקס' / מינ'</span></div></div>`
   }).join("");
   const ll = LOCS[d.wx[d.wx.length - 1]].ll, ss = sunset(d.d, ll[0], ll[1]);
-  const t = WXTIME ? WXTIME.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) : "", old = WXTIME && Date.now() - WXTIME > 3 * 3600e3;
+  const t = WXTIME ? WXTIME.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", timeZone: "America/Los_Angeles" }) : "", old = WXTIME && Date.now() - WXTIME > 3 * 3600e3;
   const status = WXLIVE && !old ? `<span class="live">● תחזית חיה · עודכנה ב-${t}</span>`
-    : WXLIVE ? `<span class="wxold">⚠️ עדכון אחרון ${WXTIME.toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>`
+    : WXLIVE ? `<span class="wxold">⚠️ עדכון אחרון ${WXTIME.toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "America/Los_Angeles" })}</span>`
     : rows ? `<span class="wxold">⚠️ מוצגת תחזית ישנה מ-18.11</span>` : `<span>התחזית תופיע כשיהיה חיבור</span>`;
   return `<section class="wx" aria-label="מזג אוויר">${rows}<div class="wxfoot"><span>🌅 שקיעה ב-${ss}</span>${status}<button class="linkbtn" id="wxrefresh" type="button">${wxLoading ? "מעדכן…" : "🔄 רענון"}</button></div></section>`;
 }
@@ -389,7 +392,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.21-19";
+const APP_VERSION = "2026.11.21-20";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
