@@ -359,3 +359,7 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .must-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .fnum.mk{font-size:18px;background:linear-gradient(135deg,#FFE3D6,#FFC9B0);border-radius:50%;width:30px;height:30px}
 .verdict{border-radius:10px;padding:8px 10px;background:var(--surface);border:1px dashed var(--line)}
+
+.trop{color:#C2410C;font-weight:700}
+.tropbox{background:linear-gradient(135deg,#FFF3D6,#FFE0B8);border:1px solid #F5B971;border-radius:10px;padding:8px 10px}
+.tropbox h4{color:#B45309!important}.tropbox p{color:#4A2A05!important}
