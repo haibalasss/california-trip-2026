@@ -389,7 +389,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.21-9";
+const APP_VERSION = "2026.11.21-10";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -484,6 +484,22 @@ function renderPack() {
    <section class="ver"><span>גרסה ${APP_VERSION}</span><button class="btn" id="updbtn" type="button">🔄 לבדוק עדכונים</button></section>`;
 }
 
+// ספירה לאחור: הן חוזרות ב-1:34 בצהריים, שעון קליפורניה (21/11/2026)
+const BACK_AT = Date.parse("2026-11-21T13:34:00-08:00");
+function backLeft() {
+  const ms = BACK_AT - Date.now();
+  if (ms <= 0) return "";
+  const t = Math.ceil(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60, p = n => String(n).padStart(2, "0");
+  return (h ? h + ":" + p(m) : m) + ":" + p(sec);
+}
+function renderBack() {
+  const left = backLeft();
+  return `<section class="group back"><h2>מתי הן חוזרות?</h2>
+   <p class="src">ב-1:34 בצהריים, שעון קליפורניה (23:34 בישראל).</p>
+   <div class="cd" id="cd" aria-live="polite">${left ? `<b dir="ltr">${left}</b><span>עד שהן חוזרות</span>` : `<b>🎉</b><span>הן אמורות להיות כאן!</span>`}</div></section>`;
+}
+setInterval(() => { if (view !== "back") return; const el = $("#cd"); if (!el) return; const left = backLeft(); el.innerHTML = left ? `<b dir="ltr">${left}</b><span>עד שהן חוזרות</span>` : `<b>🎉</b><span>הן אמורות להיות כאן!</span>`; }, 1000);
+
 let heroEnter = true, lastKey = "";
 function render() {
   if (window.speechSynthesis && typeof ttsOn !== "undefined" && ttsOn) { speechSynthesis.cancel(); ttsOn = false; }
@@ -500,7 +516,7 @@ function render() {
   const open = [...document.querySelectorAll("details")].map(x => [x.id, x.open]);
   const mapOpen = !$("#map")?.hidden;
   if (mapInst) { mapInst.remove(); mapInst = null; }
-  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : renderPack();
+  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : view === "back" ? renderBack() : renderPack();
   if (view === "food") initFood();
   open.forEach(([id, o]) => { const el = id && document.getElementById(id); if (el) el.open = o; });
   hydrateImages($("#view"));
