@@ -367,3 +367,5 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .back .cd{display:grid;justify-items:center;gap:6px;padding:28px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);text-align:center}
 .back .cd b{font-family:var(--f-display);font-size:clamp(48px,16vw,84px);line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)}
 .back .cd span{color:var(--muted);font-size:16px}
+.back .cd strong.late{font-family:var(--f-display);font-size:clamp(28px,9vw,44px);line-height:1.2;color:#C0392B}
+.back .cd b.late{color:#C0392B}

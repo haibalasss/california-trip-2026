@@ -389,7 +389,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.21-11";
+const APP_VERSION = "2026.11.21-12";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -486,19 +486,21 @@ function renderPack() {
 
 // ספירה לאחור: הן חוזרות ב-1:34 בצהריים, שעון קליפורניה (21/11/2026)
 const BACK_AT = Date.parse("2026-11-21T13:34:00-08:00");
-function backLeft() {
-  const ms = BACK_AT - Date.now();
-  if (ms <= 0) return "";
-  const t = Math.ceil(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60, p = n => String(n).padStart(2, "0");
+function backFmt(ms) {
+  const t = Math.floor(Math.abs(ms) / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60, p = n => String(n).padStart(2, "0");
   return (h ? h + ":" + p(m) : m) + ":" + p(sec);
 }
+function backCD() {
+  const ms = BACK_AT - Date.now();
+  return ms > 0 ? `<b dir="ltr">${backFmt(ms + 999)}</b><span>עד שהן חוזרות</span>`
+    : `<strong class="late">😱 אוי לא, הן מאחרות!</strong><b dir="ltr" class="late">+${backFmt(ms)}</b><span>זה כמה זמן הן מאחרות, והשעון ממשיך לספור</span>`;
+}
 function renderBack() {
-  const left = backLeft();
   return `<section class="group back"><h2>מתי הן חוזרות?</h2>
    <p class="src">ב-1:34 בצהריים, שעון קליפורניה (23:34 בישראל).</p>
-   <div class="cd" id="cd" aria-live="polite">${left ? `<b dir="ltr">${left}</b><span>עד שהן חוזרות</span>` : `<b>🎉</b><span>הן אמורות להיות כאן!</span>`}</div></section>`;
+   <div class="cd" id="cd" aria-live="polite">${backCD()}</div></section>`;
 }
-setInterval(() => { if (view !== "back") return; const el = $("#cd"); if (!el) return; const left = backLeft(); el.innerHTML = left ? `<b dir="ltr">${left}</b><span>עד שהן חוזרות</span>` : `<b>🎉</b><span>הן אמורות להיות כאן!</span>`; }, 1000);
+setInterval(() => { if (view !== "back") return; const el = $("#cd"); if (el) el.innerHTML = backCD(); }, 1000);
 
 let heroEnter = true, lastKey = "";
 function render() {
