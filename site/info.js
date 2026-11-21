@@ -11,6 +11,36 @@ const INFO = {
     e: "ב-Chestnut Street, כ-5 דקות הליכה, יש בתי קפה, מאפיות ומסעדות. Crissy Field והגשר קרובים, אפשר ללכת אליהם ברגל או לנסוע ב-Uber קצר.",
     t: ["בצ'ק-אין גובים פיקדון של $300 בכרטיס אשראי. צריך כרטיס עם מסגרת פנויה."]
   },
+  "Nintendo San Francisco": {
+    a: "החנות הרשמית של נינטנדו: מריו, פוקימון, זלדה וקירבי, עם פסלים, תצוגות ומוצרים שלא מוכרים בחנויות רגילות.",
+    e: "שתי קומות של דמויות ענק, משחקים להתנסות ופינות צילום. גם בלי לקנות כלום, הילדים ייהנו.",
+    t: ["💡 תחנה בעדיפות גבוהה. מתחילים בה, כי היא נסגרת ראשונה (בערך ב-20:00, כדאי לוודא).", "בסוף שבוע ובערבי חג לפעמים יש תור בכניסה. מגיעים מוקדם ככל האפשר."]
+  },
+  "Macy's Holiday Windows": {
+    a: "חלונות הראווה החגיגיים של Macy's, ממול ל-Union Square. בשיתוף עם עמותת SF SPCA, בחלונות מציגים כלבים וחתולים שמחכים לאימוץ.",
+    e: "עצירה קצרה לצילומים מול חלונות מקושטים. אפשר גם להיכנס לחנות ולהתחמם.",
+    t: ["💡 בעלי החיים מוצגים רק בשעות מסוימות, כך שבערב ייתכן שהחלונות יהיו בלי גורים. החלונות המקושטים יפים בכל מקרה."]
+  },
+  "ONE65 Patisserie": {
+    a: "קונדיטוריה צרפתית יוקרתית: מקרונים, אקלרים, עוגות מוס ושוקולדים מעוצבים.",
+    e: "מקום חם ונעים להתחמם ולטעום קינוחים. כל עוגה נראית כמו תכשיט, וילדים אוהבים לבחור.",
+    t: ["💡 תחנה בעדיפות גבוהה, ונסגרת בערך ב-20:00 (כדאי לוודא). אם הזמן לוחץ, מקדימים אותה לפני Macy's, היא ממש ממול.", "לקנות קופסת מקרונים מעורבת לחלוק בין שתי המשפחות."]
+  },
+  "Union Square ומשטח ההחלקה": {
+    a: "הכיכר המרכזית של סן פרנסיסקו. בעונת החגים יש בה תאורה, קישוטים ומשטח החלקה על הקרח.",
+    e: "מסתובבים, מצלמים, וצופים במחליקים. לא חייבים להחליק.",
+    t: ["💡 עץ חג המולד הגדול צפוי להיות מואר רק ב-27.11, אז ייתכן שעוד לא יהיה מואר.", "תמונה טובה מהמדרגות שליד העמוד המרכזי, עם המשטח ו-Macy's ברקע."]
+  },
+  "Amorino Gelato": {
+    a: "גלידרייה איטלקית שמגישה את הגלידה בצורת ורד. אפשר לשלב כמה טעמים באותו ורד.",
+    e: "יש גם וופלים, קרפים ושוקו חם, שמתאים לערב קר.",
+    t: ["💡 עצירה אופציונלית: אם כבר אכלתם קינוחים ב-ONE65, אפשר להסתפק בשוקו חם.", "פתוח עד מאוחר, בערך 23:00, אז אין לחץ."]
+  },
+  "Chinatown Dragon Gate": {
+    a: "שער הדרקון: שער הכניסה ההיסטורי לצ'יינהטאון, משנת 1970. משמש גם נקודת סיום של המסלול.",
+    e: "שער בסגנון סיני עם דרקונים ואריות שומרים. מאחוריו Grant Avenue עם הפנסים האדומים.",
+    t: ["💡 נקודת צילום מצוינת, במיוחד בחושך כשהפנסים דולקים.", "אם יש עוד כוח, אפשר להמשיך ברגל לצ'יינהטאון, לאורך Grant Ave. משם חוזרים למלון ב-Uber, כ-15 דקות."]
+  },
   "Crissy Field": {
     a: "פארק חוף ענק לאורך המפרץ, שנבנה על שדה תעופה צבאי ישן. הוא הנקודה הכי נוחה לראות את הגשר מגובה פני הים.",
     e: "טיילת שטוחה, חוף עם חול, אזורי ביצה ומדשאות. בקצה המערבי נמצא ה-Warming Hut, קיוסק של שמורת הפארקים עם שתייה חמה, חטיפים ושולחנות פיקניק מול הגשר.",
@@ -332,7 +362,10 @@ const WIKI = {
 
 /* Search text for each stop in Google Maps / TripAdvisor (opens the place with its photos and reviews) */
 const PLACEQ = {
-  "נחיתה ב-SFO": "San Francisco International Airport", "צ'ק-אין ב-Star Motel": "Star Motel 1727 Lombard St San Francisco",
+  "נחיתה ב-SFO": "San Francisco International Airport",
+  "Nintendo San Francisco": "Nintendo San Francisco store", "Macy's Holiday Windows": "Macy's Union Square holiday windows",
+  "ONE65 Patisserie": "French patisserie macarons eclairs", "Union Square ומשטח ההחלקה": "Union Square San Francisco ice rink",
+  "Amorino Gelato": "Amorino gelato rose", "Chinatown Dragon Gate": "Chinatown Dragon Gate San Francisco", "צ'ק-אין ב-Star Motel": "Star Motel 1727 Lombard St San Francisco",
   "Crissy Field": "Crissy Field San Francisco", "Golden Gate Bridge": "Golden Gate Bridge Welcome Center",
   "Powell-Hyde Cable Car": "Powell-Hyde Cable Car San Francisco", "יורדים ב-Hyde & Lombard ← Lombard Street": "Lombard Street San Francisco",
   "להגיע ל-Pier 33": "Alcatraz Landing Pier 33", "Alcatraz": "Alcatraz Island", "Pier 39 וארוחת צהריים": "Pier 39 San Francisco",

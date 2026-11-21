@@ -139,6 +139,32 @@ function flightBad(x) { if (!x) return false; if (/Delayed|Cancel|Diverted/.test
 /* ---------- stops: done ticks ---------- */
 const dkey = d => `done:${fam}:${d.d}`;
 const doneSet = d => new Set(store.get(dkey(d), []));
+const skipKey = d => `skip:${fam}:${d.d}`;
+const skipSet = d => new Set(store.get(skipKey(d), []));
+function toggleSkip(d, i) { const s = skipSet(d); s.has(i) ? s.delete(i) : s.add(i); store.set(skipKey(d), [...s]); nextInfoOpen = false; render(); }
+const walkMin = (a, b) => { const R = 6371000, r = Math.PI / 180, dLa = (b[0] - a[0]) * r, dLo = (b[1] - a[1]) * r;
+  const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLo / 2) ** 2; return Math.max(1, Math.round(2 * R * Math.asin(Math.sqrt(h)) * 1.3 / 75)); };
+/* Closing status for evening stops (hours are estimates) */
+function closeNote(d, s) {
+  if (!s.close) return "";
+  if (d.d !== today) return `נסגר בערך ב-${s.close}`;
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" })), [h, m] = s.close.split(":").map(Number);
+  const left = h * 60 + m - (now.getHours() * 60 + now.getMinutes());
+  if (left <= 0) return `⚠️ כנראה כבר סגור (נסגר בערך ב-${s.close})`;
+  if (left <= 45) return `⏳ נסגר בעוד כ-${left} דק' (בערך ב-${s.close})`;
+  return `נסגר בערך ב-${s.close}`;
+}
+function tourHTML(d) {
+  if (!d.tour) return "";
+  const ts = d.stops.map((s, i) => [s, i]).filter(([s]) => s.w && forFam(s)), sk = skipSet(d);
+  const active = ts.filter(([, i]) => !sk.has(i));
+  let walk = 0; for (let k = 1; k < active.length; k++) walk += walkMin(active[k - 1][0].ll, active[k][0].ll);
+  const lo = active.reduce((a, [s]) => a + s.dur[0], 0) + walk, hi = active.reduce((a, [s]) => a + s.dur[1], 0) + walk;
+  return `<section class="tour"><div class="tour-h"><b>${esc(d.tour.t)}</b><span>${esc(d.tour.sub)}</span></div>
+    <div class="tour-stats"><span><b>${active.length}</b> תחנות</span><span>🚶 <b>${walk}</b> דק' הליכה</span><span>⏱️ סה"כ <b>${lo}–${hi}</b> דק'</span></div>
+    <div class="actions"><a class="btn primary" href="${esc(d.tour.url)}" target="_blank" rel="noopener">🗺️ כל מסלול ההליכה בגוגל מפות</a></div>
+    <p class="src">שעות הסגירה משוערות. כדאי לוודא בגוגל מפות לפני שיוצאים.</p></section>`;
+}
 function toggleDone(d, i) { const s = doneSet(d); s.has(i) ? s.delete(i) : s.add(i); store.set(dkey(d), [...s]); render(); }
 
 /* ---------- map (loaded on demand) ---------- */
@@ -254,7 +280,7 @@ function toggleInfo(btn) {
   btn.setAttribute("aria-expanded", open);
   btn.querySelector(".st-more").textContent = open ? "סגירה ▲" : "מה זה? ▼";
   const old = li.querySelector(".sinfo"); if (old) old.remove();
-  if (open) { li.insertAdjacentHTML("beforeend", infoHTML(inf, d.stops[+i].n)); const box = li.querySelector(".sinfo"); hydrateImages(box); requestAnimationFrame(() => { const r = box.getBoundingClientRect(); if (r.bottom > innerHeight) box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }); }
+  if (open) { li.insertAdjacentHTML("beforeend", infoHTML(inf, d.stops[+i].n, +i, skipSet(d).has(+i))); const box = li.querySelector(".sinfo"); hydrateImages(box); requestAnimationFrame(() => { const r = box.getBoundingClientRect(); if (r.bottom > innerHeight) box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }); }
 }
 function toggleNextInfo(btn) {
   const sec = btn.closest(".next"), d = daysFor(fam)[dayIdx], inf = INFO[d.stops[+btn.dataset.nxinfo].n];
@@ -263,15 +289,15 @@ function toggleNextInfo(btn) {
   if (nextInfoOpen) { sec.querySelector(".actions").insertAdjacentHTML("afterend", infoHTML(inf, d.stops[+btn.dataset.nxinfo].n)); hydrateImages(sec); }
 }
 function nextHTML(d) {
-  const stops = d.stops.map((s, i) => [s, i]).filter(([s]) => forFam(s)), done = doneSet(d);
-  const rest = stops.filter(([, i]) => !done.has(i));
+  const stops = d.stops.map((s, i) => [s, i]).filter(([s]) => forFam(s)), done = doneSet(d), sk = skipSet(d);
+  const rest = stops.filter(([, i]) => !done.has(i) && !sk.has(i));
   if (!rest.length) return `<div class="next all"><b>✓ כל התחנות של היום הושלמו</b></div>`;
   const [s, i] = rest[0], after = rest[1];
   const isToday = d.d === today;
   return `<section class="next" aria-label="התחנה הבאה">
     <div class="nx-top"><span class="nx-lbl">${isToday ? (done.size ? "עכשיו" : "מתחילים") : "התחנה הראשונה"}</span>${s.t ? `<span class="nx-t">${esc(s.t)}</span>` : ""}</div>
-    <div class="nx-n"><span class="nx-i" aria-hidden="true">${s.i || "📍"}</span>${esc(s.n)}</div>${s.x ? `<p>${esc(s.x)}</p>` : ""}
-    <div class="actions"><a class="btn primary" href="${gdest(s.ll)}" target="_blank" rel="noopener">ניווט</a><button class="btn" data-done="${i}">✓ סיימנו, לתחנה הבאה</button>${INFO[s.n] ? `<button class="btn" data-nxinfo="${i}">${nextInfoOpen ? "סגירה" : "ℹ️ מה זה?"}</button>` : ""}</div>
+    <div class="nx-n"><span class="nx-i" aria-hidden="true">${s.i || "📍"}</span>${esc(s.n)}${s.pri ? ` <span class="pri">⭐ עדיפות גבוהה</span>` : ""}</div>${s.x ? `<p>${esc(s.x)}</p>` : ""}${s.w ? `<p>${esc(s.addr)} · ${s.dur[0]}–${s.dur[1]} דק'${s.close ? " · " + esc(closeNote(d, s)) : ""}</p>` : ""}
+    <div class="actions"><a class="btn primary" href="${s.w ? `https://www.google.com/maps/dir/?api=1&destination=${s.ll.join(",")}&travelmode=walking` : gdest(s.ll)}" target="_blank" rel="noopener">ניווט</a><button class="btn" data-done="${i}">✓ סיימנו, לתחנה הבאה</button><button class="btn" data-skip="${i}">⏭️ דילוג</button>${INFO[s.n] ? `<button class="btn" data-nxinfo="${i}">${nextInfoOpen ? "סגירה" : "ℹ️ מה זה?"}</button>` : ""}</div>
     ${INFO[s.n] && nextInfoOpen ? infoHTML(INFO[s.n], s.n) : ""}
     ${after ? `<div class="nx-after">אחר כך: ${esc(after[0].n)}</div>` : ""}</section>`;
 }
@@ -314,21 +340,25 @@ function hydrateImages(root) {
       c.textContent = `${best + 1} / ${figs.length}`; }, { passive: true });
   });
 }
-function infoHTML(inf, name) {
+function infoHTML(inf, name, idx, skipped) {
   const q = name && PLACEQ[name] && !NO_PHOTO.test(PLACEQ[name]) ? PLACEQ[name] : null;
   const photos = q ? `<div class="simg" data-q="${esc(q)}"><span class="sk"></span></div>` : "";
   return `<div class="sinfo">${photos}<div><h4>מה זה</h4><p>${esc(inf.a)}</p></div><div><h4>מה מחכה שם</h4><p>${esc(inf.e)}</p></div>
-    <div class="gold"><h4>טיפ זהב</h4>${inf.t.map(t => `<p>${esc(t.replace(/^💡\s*/, ""))}</p>`).join("")}</div></div>`;
+    <div class="gold"><h4>טיפ זהב</h4>${inf.t.map(t => `<p>${esc(t.replace(/^💡\s*/, ""))}</p>`).join("")}</div>
+    ${idx != null ? `<div class="actions"><button class="btn" data-skip="${idx}">${skipped ? "↩️ ביטול הדילוג" : "⏭️ דילוג על התחנה"}</button></div>` : ""}</div>`;
 }
 function stopsHTML(d) {
-  const done = doneSet(d); let n = 0;
-  return `<ol class="stops">${d.stops.map((s, i) => { if (!forFam(s)) return ""; n++; const ok = done.has(i);
-    return `<li class="${ok ? "ok" : ""}${s.opt ? " opt" : ""}"><button class="num" data-done="${i}" aria-label="${ok ? "בטל סימון" : "סמן כבוצע"}: ${esc(s.n)}">${ok ? "✓" : n}</button>
+  const done = doneSet(d), sk = skipSet(d); let n = 0, prev = null;
+  return `<ol class="stops">${d.stops.map((s, i) => { if (!forFam(s)) return ""; n++; const ok = done.has(i), skp = sk.has(i);
+    const walk = s.w && prev && prev.w && !skp ? `<div class="walkgap">🚶 ${walkMin(prev.ll, s.ll)} דק' הליכה</div>` : "";
+    if (!skp) prev = s;
+    if (s.w && !s.x) s = Object.assign({}, s, { x: `${s.addr} · ${s.dur[0]}–${s.dur[1]} דק'${s.close ? " · " + closeNote(d, s) : ""}` });
+    return `${walk ? `<li class="wg" aria-hidden="true">${walk}</li>` : ""}<li class="${ok ? "ok" : ""}${skp ? " skipped" : ""}${s.opt ? " opt" : ""}${s.pri ? " pri-row" : ""}"><button class="num" data-done="${i}" aria-label="${ok ? "בטל סימון" : "סמן כבוצע"}: ${esc(s.n)}">${ok ? "✓" : skp ? "⏭" : n}</button>
       ${(() => { const inf = INFO[s.n], op = inf && openStops.has(d.d + ":" + i);
-        const body = `<span class="st-n">${s.i ? `<span aria-hidden="true">${s.i}</span> ` : ""}${esc(s.n)}</span>${s.x || s.t ? `<span class="st-x">${s.t ? `<b>${esc(s.t)}</b> ` : ""}${s.x ? esc(s.x) : ""}</span>` : ""}`;
+        const body = `<span class="st-n">${s.i ? `<span aria-hidden="true">${s.i}</span> ` : ""}${esc(s.n)}${s.pri ? ` <span class="pri">⭐ עדיפות</span>` : ""}${skp ? ` <span class="skp">דילגנו</span>` : ""}</span>${s.x || s.t ? `<span class="st-x">${s.t ? `<b>${esc(s.t)}</b> ` : ""}${s.x ? esc(s.x) : ""}</span>` : ""}`;
         return inf ? `<button class="st-b st-btn" data-info="${d.d}:${i}" aria-expanded="${op}">${body}<span class="st-more">${op ? "סגירה ▲" : "מה זה? ▼"}</span></button>` : `<div class="st-b">${body}</div>`; })()}
-      <a class="nav" href="${gdest(s.ll)}" target="_blank" rel="noopener" aria-label="ניווט אל ${esc(s.n)}">➤</a>
-      ${INFO[s.n] && openStops.has(d.d + ":" + i) ? infoHTML(INFO[s.n], s.n) : ""}</li>` }).join("")}</ol>`;
+      <a class="nav" href="${s.w ? `https://www.google.com/maps/dir/?api=1&destination=${s.ll.join(",")}&travelmode=walking` : gdest(s.ll)}" target="_blank" rel="noopener" aria-label="ניווט אל ${esc(s.n)}">➤</a>
+      ${INFO[s.n] && openStops.has(d.d + ":" + i) ? infoHTML(INFO[s.n], s.n, i, skp) : ""}</li>` }).join("")}</ol>`;
 }
 function remindHTML(d) {
   if (d.d !== today) return "";
@@ -354,7 +384,7 @@ function renderDay() {
    ${nextHTML(d)}
    <section class="route"><div class="route-h"><h3 class="sect-title">מסלול היום</h3>
      <div class="actions"><button class="btn" id="mapbtn" type="button">🗺️ מפה</button><a class="btn" href="${routeURL(d)}" target="_blank" rel="noopener">מסלול בגוגל מפות</a></div></div>
-     <div id="map" class="map" hidden></div>${stopsHTML(d)}
+     <div id="map" class="map" hidden></div>${tourHTML(d)}${stopsHTML(d)}
      ${prep ? `<div class="prep"><b>להכנה:</b> ${esc(prep)}</div>` : ""}</section>
    ${d.planB ? `<details class="more" id="pb-${d.d}"><summary>תוכנית ב'</summary><div class="note">${d.planB}</div></details>` : ""}
    ${roads ? `<div class="roads">${roads.map(([t, u]) => `<a class="btn" href="${u}" target="_blank" rel="noopener">🚧 ${esc(t)}</a>`).join("")}</div>` : ""}
@@ -369,7 +399,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.20-12";
+const APP_VERSION = "2026.11.20-13";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -495,6 +525,7 @@ document.addEventListener("click", e => {
   const ci = e.target.closest("[data-ci]"); if (ci) { const x = store.get("checkin", {}); x[ci.dataset.ci] = true; store.set("checkin", x); render(); toast("מעולה, הצ'ק-אין סומן"); return }
   const inf = e.target.closest("[data-info]"); if (inf) { toggleInfo(inf); return }
   const nx = e.target.closest("[data-nxinfo]"); if (nx) { toggleNextInfo(nx); return }
+  const skb = e.target.closest("[data-skip]"); if (skb) { toggleSkip(daysFor(fam)[dayIdx], +skb.dataset.skip); return }
   const dn = e.target.closest("[data-done]"); if (dn) nextInfoOpen = false; if (dn) { toggleDone(daysFor(fam)[dayIdx], +dn.dataset.done); return }
   const dc = e.target.closest("[data-doc]"); if (dc) { openDoc(dc.dataset.doc); return }
   if (e.target.closest(".reveal")) askUnlock();
