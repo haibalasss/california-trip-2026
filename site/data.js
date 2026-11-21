@@ -38,20 +38,14 @@ const ROADS = {
 
 const DAYS = [
  { d: "2026-11-20", dow: "שישי", scene: "sf", wx: ["sf"], title: "נוחתים בסן פרנסיסקו", sleep: "Star Motel",
-   tour: { t: "🎄 סיור הליכה ערב ב-Union Square", sub: "שתי המשפחות · מסלול קומפקטי עם הרבה עצירות בפנים, כי בערב קר",
-     url: "https://www.google.com/maps/dir/?api=1&origin=Nintendo+SAN+FRANCISCO%2C+331+Powell+St%2C+San+Francisco%2C+CA&destination=Dragon+Gate%2C+Grant+Ave+and+Bush+St%2C+San+Francisco%2C+CA&travelmode=walking&waypoints=Macy%27s%2C+170+O%27Farrell+St%2C+San+Francisco%2C+CA%7CONE65+Patisserie%2C+165+O%27Farrell+St%2C+San+Francisco%2C+CA%7CUnion+Square%2C+San+Francisco%2C+CA%7CAmorino%2C+338+Grant+Ave%2C+San+Francisco%2C+CA" },
    stops: [
      { t: "12:09", n: "נחיתה ב-SFO", ll: P.sfo, i: "✈️", x: "עד יום ראשון אין רכב. Uber XL מהשדה, כ-30 דקות." },
      { t: "15:00", n: "צ'ק-אין ב-Star Motel", ll: P.star, i: "🏨", x: "1727 Lombard St" },
      { n: "Crissy Field", ll: P.crissy, i: "🌿", x: "טיילת לאורך המפרץ עם נוף לגשר" },
      { n: "Golden Gate Bridge", ll: P.ggb, i: "🌉", x: "נקודת תצפית ב-Welcome Center" },
      { n: "Uber ל-Union Square", ll: P.union, i: "🚕" },
-     { n: "Nintendo San Francisco", ll: [37.78852, -122.40867], i: "🎮", w: 1, pri: 1, dur: [20, 25], close: "20:00", addr: "331 Powell St" },
-     { n: "Macy's Holiday Windows", ll: [37.78652, -122.40697], i: "🐶", w: 1, dur: [5, 10], addr: "170 O'Farrell St" },
-     { n: "ONE65 Patisserie", ll: [37.78664, -122.40640], i: "🧁", w: 1, pri: 1, dur: [15, 20], close: "20:00", addr: "165 O'Farrell St" },
-     { n: "Union Square ומשטח ההחלקה", ll: [37.78797, -122.40745], i: "⛸️", w: 1, dur: [10, 15], addr: "333 Post St" },
-     { n: "Amorino Gelato", ll: [37.79004, -122.40555], i: "🍦", w: 1, dur: [10, 15], close: "23:00", addr: "338 Grant Ave", opt: true },
-     { n: "Chinatown Dragon Gate", ll: [37.79073, -122.40573], i: "🐉", w: 1, dur: [5, 10], addr: "Grant Ave & Bush St" },
+     { n: "Powell-Hyde Cable Car", ll: P.powell, i: "🚋", x: "התחנה הראשונה ב-Powell & Market. עולים לכיוון Fisherman's Wharf." },
+     { n: "יורדים ב-Hyde & Lombard ← Lombard Street", ll: P.lombard, i: "🌸", x: "הולכים ברגל במורד 'הרחוב העקום'" },
      { n: "חזרה למלון", ll: P.star, i: "🏨" }
    ],
    prep: "מחר: להגיע ל-Pier 33 עד 09:25. כל אחד מביא טלפון טעון ואוזניות.",
