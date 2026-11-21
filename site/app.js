@@ -98,18 +98,32 @@ function wmo(c) {
   if (c >= 71 && c <= 77) return ["🌨️", "שלג"]; if (c >= 80 && c <= 82) return ["🌦️", "ממטרים"]; if (c >= 85 && c <= 86) return ["🌨️", "ממטרי שלג"];
   if (c >= 95) return ["⛈️", "סופת רעמים"]; return ["🌡️", ""];
 }
-async function loadWeather() {
-  try {
-    const out = {};
-    await Promise.all(Object.entries(LOCS).map(async ([k, v]) => {
-      const u = `https://api.open-meteo.com/v1/forecast?latitude=${v.ll[0]}&longitude=${v.ll[1]}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=America%2FLos_Angeles&start_date=2026-11-20&end_date=2026-11-29`;
-      const r = await fetch(u, { signal: tmo(6000) }); if (!r.ok) throw 0; const j = await r.json();
+/* Live weather from Open-Meteo. Each location loads on its own (one failure no longer drops all of them),
+   the last good data is kept on the phone, and "now" temperatures are shown for today. */
+let WXNOW = {};
+(() => { const c = store.get("wxlive", null); if (c && c.data) { WXLIVE = c.data; WXNOW = c.now || {}; WXTIME = new Date(c.at); } })();
+let wxLoading = false;
+async function loadWeather(force) {
+  if (wxLoading) return; if (!force && WXTIME && Date.now() - WXTIME < 15 * 60000 && Object.keys(WXNOW).length) return;
+  wxLoading = true;
+  const out = Object.assign({}, WXLIVE || {}), now = Object.assign({}, WXNOW); let ok = 0;
+  await Promise.all(Object.entries(LOCS).map(async ([k, v]) => {
+    try {
+      const u = `https://api.open-meteo.com/v1/forecast?latitude=${v.ll[0]}&longitude=${v.ll[1]}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&current=temperature_2m,apparent_temperature,weather_code&timezone=America%2FLos_Angeles&past_days=2&forecast_days=10`;
+      const r = await fetch(u, { cache: "no-store", signal: tmo(10000) }); if (!r.ok) return; const j = await r.json(); if (!j.daily) return;
       j.daily.time.forEach((t, i) => { if (j.daily.temperature_2m_max[i] == null) return;
         out[t + "|" + k] = { c: j.daily.weather_code[i], hi: Math.round(j.daily.temperature_2m_max[i]), lo: Math.round(j.daily.temperature_2m_min[i]), p: j.daily.precipitation_probability_max[i], wd: j.daily.wind_speed_10m_max ? Math.round(j.daily.wind_speed_10m_max[i]) : null }; });
-    }));
-    WXLIVE = out; WXTIME = new Date(); if (view === "days") render();
-  } catch (e) { }
+      if (j.current && j.current.temperature_2m != null) now[k] = { t: Math.round(j.current.temperature_2m), f: j.current.apparent_temperature != null ? Math.round(j.current.apparent_temperature) : null, c: j.current.weather_code, at: Date.now() };
+      ok++;
+    } catch (e) { }
+  }));
+  wxLoading = false;
+  if (ok) { WXLIVE = out; WXNOW = now; WXTIME = new Date(); store.set("wxlive", { data: out, now, at: WXTIME.getTime() }); }
+  WXFAIL = !ok;
+  if (view === "days") render();
 }
+let WXFAIL = false;
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadWeather(); });
 const fF = c => Math.round(c * 9 / 5 + 32);
 /* What to wear, derived from the day's forecast (live when available) */
 function dress(w) {
@@ -186,15 +200,21 @@ function renderStrip() {
   if (sel) { const r = sel.getBoundingClientRect(), sr = s.getBoundingClientRect(); s.scrollBy({ left: (r.left + r.width / 2) - (sr.left + sr.width / 2) }); } // horizontal only, never moves the page
 }
 function wxHTML(d) {
+  const isToday = d.d === today;
   const rows = d.wx.map(l => {
     const w = wxFor(d.d, l); if (!w) return ""; const [ic, txt] = wmo(w.c);
     const bad = (w.c >= 71 && w.c <= 77) || w.c >= 85 || w.p >= 70; const tip = WXTIP[d.d + "|" + l];
-    return `<div class="wxrow${bad ? " bad" : ""}"><div class="wxi" aria-hidden="true">${ic}</div>
-    <div class="wxt"><b>${esc(LOCS[l].n)} · ${esc(txt)}</b>${tip ? `<span>${esc(tip)}</span>` : ""}<span>גשם ${w.p != null ? w.p + "%" : "–"}${w.wd != null ? ` · רוח עד ${w.wd} קמ"ש` : ""}</span><span class="dress"><b>👕 מה ללבוש:</b> ${esc(dress(w))}</span></div>
-    <div class="wxn"><b>${w.hi}° / ${w.lo}°</b><span>${fF(w.hi)}°F / ${fF(w.lo)}°F</span></div></div>`
+    const n = isToday && WXNOW[l] && Date.now() - WXNOW[l].at < 3 * 3600e3 ? WXNOW[l] : null;
+    return `<div class="wxrow${bad ? " bad" : ""}"><div class="wxi" aria-hidden="true">${n ? wmo(n.c)[0] : ic}</div>
+    <div class="wxt"><b>${esc(LOCS[l].n)} · ${esc(txt)}</b>${n ? `<span class="wxnow">🌡️ עכשיו <b>${n.t}°</b>${n.f != null && n.f !== n.t ? ` · מרגיש כמו ${n.f}°` : ""}</span>` : ""}${tip ? `<span>${esc(tip)}</span>` : ""}<span>גשם ${w.p != null ? w.p + "%" : "–"}${w.wd != null ? ` · רוח עד ${w.wd} קמ"ש` : ""}</span><span class="dress"><b>👕 מה ללבוש:</b> ${esc(dress(w))}</span></div>
+    <div class="wxn"><b>${w.hi}° / ${w.lo}°</b><span>${fF(w.hi)}°F / ${fF(w.lo)}°F</span><span class="hl">מקס' / מינ'</span></div></div>`
   }).join("");
   const ll = LOCS[d.wx[d.wx.length - 1]].ll, ss = sunset(d.d, ll[0], ll[1]);
-  return `<section class="wx" aria-label="מזג אוויר">${rows}<div class="wxfoot"><span>🌅 שקיעה ב-${ss}</span>${WXLIVE ? `<span class="live">● תחזית חיה</span>` : (rows ? `<span>תחזית מ-18.11</span>` : `<span>התחזית תופיע כשיהיה חיבור</span>`)}</div></section>`;
+  const t = WXTIME ? WXTIME.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) : "", old = WXTIME && Date.now() - WXTIME > 3 * 3600e3;
+  const status = WXLIVE && !old ? `<span class="live">● תחזית חיה · עודכנה ב-${t}</span>`
+    : WXLIVE ? `<span class="wxold">⚠️ עדכון אחרון ${WXTIME.toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>`
+    : rows ? `<span class="wxold">⚠️ מוצגת תחזית ישנה מ-18.11</span>` : `<span>התחזית תופיע כשיהיה חיבור</span>`;
+  return `<section class="wx" aria-label="מזג אוויר">${rows}<div class="wxfoot"><span>🌅 שקיעה ב-${ss}</span>${status}<button class="linkbtn" id="wxrefresh" type="button">${wxLoading ? "מעדכן…" : "🔄 רענון"}</button></div></section>`;
 }
 function flightBox(fl) {
   const x = flightInfo(fl); if (!x) return "";
@@ -369,7 +389,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.20-14";
+const APP_VERSION = "2026.11.21-1";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -486,6 +506,7 @@ function render() {
   if (view === "days") { $("#mapbtn").onclick = () => { const m = $("#map"); if (!m.hidden) { m.hidden = true; if (mapInst) { mapInst.remove(); mapInst = null; } } else showMap(d); };
     if (mapOpen && !heroEnter) showMap(d); }
   if (view === "clothes") $("#view").querySelectorAll("input[data-c]").forEach(c => c.onchange = () => { const x = store.get("clothes:" + fam, {}); x[c.dataset.c] = c.checked; store.set("clothes:" + fam, x); render() });
+  if (view === "days") { const wr = $("#wxrefresh"); if (wr) wr.onclick = () => { wr.textContent = "מעדכן…"; loadWeather(true); }; }
   if (view === "pack") { const u = $("#updbtn"); if (u) u.onclick = forceUpdate; }
   if (view === "pack") $("#view").querySelectorAll("input").forEach(c => c.onchange = () => { const x = store.get("pack", {}); x[c.dataset.i] = c.checked; store.set("pack", x); render() });
 }
@@ -503,9 +524,9 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => { view = t.data
 document.querySelectorAll(".famb").forEach(b => b.onclick = () => { if (fam === b.dataset.fam) return; fam = b.dataset.fam; store.set("fam", fam); pickToday(); render(); window.scrollTo({ top: 0 }); toast("משפחת " + FAMILIES[fam]); });
 
 render();
-requestAnimationFrame(() => setTimeout(() => { tryStoredKey(); loadWeather(); loadFlights(); }, 0));
+requestAnimationFrame(() => setTimeout(() => { tryStoredKey(); loadWeather(true); loadFlights(); }, 0));
 setInterval(() => { loadFlights(); if (view === "days" && $("#unlock").hidden && $("#map").hidden) render(); }, 5 * 60000);
-setInterval(loadWeather, 60 * 60000);
+setInterval(() => loadWeather(true), 30 * 60000);
 if ("serviceWorker" in navigator && location.protocol === "https:" && location.hostname.endsWith("github.io")) {
   const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });

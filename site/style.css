@@ -329,3 +329,7 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .seat{border-radius:10px;padding:8px 10px;background:var(--surface);border:1px solid var(--line)}
 .seat-y{border-color:var(--ok);background:var(--ok-soft)}.seat-t{border-color:var(--warn);background:var(--warn-soft)}
 .seat h4{color:var(--ink)!important}
+
+.wxnow{color:var(--ink)!important;font-size:13.5px!important}.wxnow b{font-family:var(--f-display);font-size:15px}
+.wxn .hl{font-size:10px}
+.wxold{color:var(--warn);font-weight:500}
