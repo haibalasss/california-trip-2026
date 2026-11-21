@@ -94,7 +94,7 @@ function renderDiscover() {
   const shown = discFilter === "fav" ? Object.values(DISCOVER).flatMap((arr, k) => arr.map((x, i) => Object.assign({ id: Object.keys(DISCOVER)[k] + ":" + i }, x))).filter(x => favs.has(x.id) && (!x.fam || x.fam === fam))
     : items.filter(x => discFilter === "all" || x.c === discFilter);
   const chips = [["all", "הכל"], ...Object.entries(DCAT).map(([k, [i, n]]) => [k, i + " " + n]), ["fav", `❤️ שמורים (${favs.size})`]];
-  return `<section class="group"><h2>✨ לגלות: ${esc(d.title)}</h2><p class="src">${d.dow} ${+d.d.slice(8)}.11 · ${esc(SCENES[d.scene].label)}. בוחרים יום למעלה, ושומרים ❤️ מה שרוצים לעשות או לזכור.</p>
+  return `${storyHTML(d)}<section class="group"><h2>✨ לגלות: ${esc(d.title)}</h2><p class="src">${d.dow} ${+d.d.slice(8)}.11 · ${esc(SCENES[d.scene].label)}. בוחרים יום למעלה, ושומרים ❤️ מה שרוצים לעשות או לזכור.</p>
     <div class="dchips">${chips.map(([k, l]) => `<button class="dchip" data-df="${k}" aria-pressed="${discFilter === k}">${l}</button>`).join("")}</div>
     ${shown.length ? `<ol class="stops disc">${shown.map(x => { const [ic, cn] = DCAT[x.c], fav = favs.has(x.id);
       return `<li><span class="num fnum" aria-hidden="true">${ic}</span>
