@@ -231,7 +231,7 @@ function pickFor(name) { const k = normName(name); return k.length > 3 ? FOOD_PI
 function pickInfoHTML(p) {
   return `<div class="sinfo"><div class="simg" data-q="${esc(p.q)}" data-note="תמונה להמחשה"><span class="sk"></span></div>
     <div><h4>מה זה</h4><p>${esc(p.w)}</p></div>
-    ${p.hd !== undefined ? `<div class="hai"><h4>🍽️ מה חי יזמין</h4>${p.hd ? p.hd.map(([n, x]) => `<p><b dir="auto">${esc(n)}</b> · ${esc(x)}</p>`).join("") : `<p class="muted">${esc(HD_NONE)}</p>`}</div>` : ""}
+    ${p.hd !== undefined ? `<div class="hai"><h4>🍽️ מה חי יזמין</h4>${p.hd ? p.hd.map(([n, x]) => `<p><b dir="auto">${esc(n)}</b> · ${esc(x)}</p>`).join("") : `<p class="muted">${esc(p.hdn || HD_NONE)}</p>`}</div>` : ""}
     ${seatHTML(p.ks, p.kst)}
     <div><h4>דירוג ומקור</h4><p>${p.r ? `<b class="stars">⭐ ${p.r}</b> · ` : ""}${esc(p.s)}</p></div>
     <div class="gold"><h4>טיפ זהב</h4><p>${esc(p.k)}</p></div>
@@ -240,8 +240,8 @@ function pickInfoHTML(p) {
 let mustAll = false;
 function mustHTML(ll) {
   const a = ll && areaFor(ll);
-  const list = MUST_TRY.map((m, i) => [m, i]).filter(([m]) => mustAll || !a || m.a === a.id);
-  if (!list.length) return "";
+  const list = MUST_TRY.map((m, i) => [m, i]).filter(([m]) => mustAll || !a || [].concat(m.a).includes(a.id));
+  if (!list.length) return a ? `<section class="picks must"><div class="must-h"><h3 class="sect-title">🔥 מנות שחייבים לטעום: ${esc(a.n)}</h3><button class="linkbtn" id="mustall" type="button">כל המסלול</button></div><p class="src">באזור הזה לא מצאתי מנה שמצדיקה עצירה מיוחדת. עדיף פיקניק או ארוחה פשוטה, ולחסוך את התיאבון ליעד הבא.</p></section>` : "";
   return `<section class="picks must"><div class="must-h"><h3 class="sect-title">🔥 מנות שחייבים לטעום${!mustAll && a ? ": " + esc(a.n) : ": כל המסלול"}</h3>
       <button class="linkbtn" id="mustall" type="button">${mustAll ? "רק האזור שלי" : "כל המסלול"}</button></div>
     <ol class="stops foods">${list.map(([m, i]) => `<li><span class="num fnum mk" aria-hidden="true">🔥</span>
@@ -304,7 +304,7 @@ function liveRequestText() {
   const w = FOOD.where; if (!w) return null;
   const now = new Date(), area = areaFor(w.ll);
   const list = FOOD.items.slice(0, 12).map((x, i) => `${i + 1}. ${x.t.name}${x.t.cuisine ? " (" + x.t.cuisine + ")" : ""} · ${Math.round(x.dist)}m${x.open === true ? " · open" : x.open === false ? " · closed" : ""}${x.t.opening_hours ? " · " + x.t.opening_hours : ""}`).join("\n");
-  return `🍽️ בקשת המלצות אוכל ממשפחת ${FAMILIES[fam]}\n📍 ${w.ll[0].toFixed(5)},${w.ll[1].toFixed(5)}${area ? " (" + area.n + ")" : ""} · ${w.label}\n🕒 ${now.toLocaleString("he-IL", { timeZone: "America/Los_Angeles", weekday: "long", hour: "2-digit", minute: "2-digit" })} (שעון קליפורניה)\n👨‍👩‍👧‍👦 10 אנשים, כולל ילדים\n\nמקומות קרובים מהמפה:\n${list || "(לא נמצאו)"}\n\nבבקשה: המלצות עם דירוג, מידע, תמונות, והאם המקום מתאים לישיבה עם ילדים. לפי הטעם של חי: מנות ספציפיות ומפתיעות עם אפקט WOW, אוכל רחוב, פיוז'ן, טעמים חזקים, ולא המלצות גנריות. ולעדכן את האפליקציה.`;
+  return `🍽️ בקשת המלצות אוכל ממשפחת ${FAMILIES[fam]}\n📍 ${w.ll[0].toFixed(5)},${w.ll[1].toFixed(5)}${area ? " (" + area.n + ")" : ""} · ${w.label}\n🕒 ${now.toLocaleString("he-IL", { timeZone: "America/Los_Angeles", weekday: "long", hour: "2-digit", minute: "2-digit" })} (שעון קליפורניה)\n👨‍👩‍👧‍👦 10 אנשים, כולל ילדים\n\nמקומות קרובים מהמפה:\n${list || "(לא נמצאו)"}\n\nבבקשה: המלצות עם דירוג, מידע, תמונות, והאם המקום מתאים לישיבה עם ילדים. לפי הטעם של חי: מנות ספציפיות ומפתיעות עם אפקט WOW, אוכל רחוב, פיוז'ן, טעמים חזקים, בלי פירות ים (דגים בסדר), ולא המלצות גנריות. ולעדכן את האפליקציה.`;
 }
 async function sendToClaude(btn) {
   const txt = liveRequestText(); if (!txt) { toast("קודם מחפשים מסעדות"); return; }
