@@ -16,7 +16,7 @@ const tmo = ms => (AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
 
 /* ---------- state ---------- */
 let fam = store.get("fam", "b");
-let view = store.get("view", "days"); if (view === "back") view = "days";
+let view = store.get("view", "days"); if (view === "back" || view === "clothes") view = "days";
 let today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
 /* The app can stay open past midnight: keep "today" current (California date). */
 function refreshToday() { const t = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }); if (t !== today) { today = t; if (typeof render === "function") render(); } }
@@ -392,7 +392,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.22-10";
+const APP_VERSION = "2026.11.22-11";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -506,7 +506,7 @@ function render() {
   /* Never leave the screen blank (reported: blank Discover tab). If a tab's code is not loaded yet or throws,
      show a message with a retry button instead of an empty page, and try again once everything has loaded. */
   let html;
-  try { html = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : view === "road" ? renderRoad() : renderPack(); }
+  try { html = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : view === "road" ? renderRoad() : view === "nature" ? renderNature() : renderPack(); }
   catch (err) {
     console.error(err);
     if (document.readyState !== "complete" && !render.retry) { render.retry = true; addEventListener("load", () => { render.retry = false; render(); }, { once: true }); }

@@ -413,3 +413,23 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .road.locked .glock{font-size:28px}
 .road.locked .gcd b{font-family:var(--f-display);font-size:clamp(44px,15vw,72px);line-height:1;font-variant-numeric:tabular-nums}
 .road.locked .gcd span:last-child{color:var(--muted);font-size:15px}
+/* nature hunt */
+.nat .natbar{display:grid;gap:6px;margin:8px 0}.nat .natprog{height:10px;border-radius:6px;background:var(--line);overflow:hidden}.nat .natprog i{display:block;height:100%;background:var(--ok,#1E8E4E);border-radius:6px;transition:width .4s}
+.nat .natbar b{font-size:15px}
+.nat .natwho{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}.nat .natwho span{font-weight:600;font-size:14px}
+.nat .natkid{font:inherit;font-size:15px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.nat .natkid[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:var(--on-sea);font-weight:700}
+.nat .natrules{font-size:14px;margin:6px 0}.nat .natrules summary{cursor:pointer;font-weight:600}.nat .natrules ul{margin:6px 0;padding-inline-start:20px;display:grid;gap:4px}
+.nat .nathunt{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.nat .natitem{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}.nat .natitem.got{border-color:#1E8E4E}
+.nat .nathead{width:100%;display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:12px;font:inherit;font-size:16px;text-align:start;background:none;border:0;color:var(--ink);cursor:pointer}
+.nat .natem{font-size:26px}.nat .natnm{font-weight:600}.nat .natst{font-size:13px;white-space:nowrap}.nat .natck{font-size:13px;font-weight:700;color:#1E8E4E;min-width:28px}
+.nat .natbody{padding:0 12px 12px;display:grid;gap:10px}.nat .natbody p{margin:0;font-size:14.5px}
+.nat .natgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.nat .natph{display:grid;gap:3px;padding:0;border:0;background:none;color:var(--ink);font:inherit;cursor:pointer;text-align:center}
+.nat .natph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--line)}.nat .natph span{font-size:13px;font-weight:600}
+.nat .natadd{justify-self:start}
+.nat.locked .gcd{display:grid;justify-items:center;gap:6px;padding:26px 12px;border:1px dashed var(--line);border-radius:var(--r);background:var(--surface);text-align:center}
+.nat.locked .glock{font-size:28px}.nat.locked .gcd b{font-family:var(--f-display);font-size:clamp(44px,15vw,72px);line-height:1;font-variant-numeric:tabular-nums}.nat.locked .gcd span:last-child{color:var(--muted);font-size:15px}
+.natview{position:fixed;inset:0;z-index:40;background:rgba(5,15,20,.94);display:grid;grid-template-rows:auto 1fr auto;gap:10px;padding:12px;justify-items:center}
+.natview .natvbar{display:flex;gap:10px;justify-self:stretch;justify-content:space-between}.natview img{max-width:100%;max-height:100%;object-fit:contain;align-self:center;border-radius:8px}.natview p{margin:0;color:#fff;font-size:16px;font-weight:600;text-align:center}
