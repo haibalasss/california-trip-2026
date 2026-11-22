@@ -113,7 +113,7 @@ function bingoHTML() {
   bingoCarryOver();
   const m = bingoMarks(fam), lines = bingoLines(m), other = fam === "a" ? "b" : "a", ol = bingoLines(bingoMarks(other));
   return `<section class="group road"><h2>🎯 בינגו דרכים</h2><p class="src">לוח אחד לכולם. הסימונים משותפים לכל מי שבאותה מכונית, בכל הטלפונים. רואים משהו מהלוח? לוחצים עליו. לחיצה נוספת מבטלת. שורה, טור או אלכסון שלם זה בינגו!</p>
-    <div class="bingo">${BINGO.map((t, i) => `<button class="bcell${m[i] ? " on" : ""}" data-b="${i}" type="button" aria-pressed="${!!m[i]}">${esc(t)}</button>`).join("")}</div>
+    <div class="bingo">${BINGO.map((t, i) => { const sp = t.indexOf(" "); return `<button class="bcell${m[i] ? " on" : ""}" data-b="${i}" type="button" aria-pressed="${!!m[i]}"><span class="bem">${esc(t.slice(0, sp))}</span><span class="btx">${esc(t.slice(sp + 1))}</span></button>`; }).join("")}</div>
     <p class="bstat">${lines ? `🎉 ${lines} בינגו אצלכם` : "עוד אין בינגו"} · ${CARS[other]}: ${ol ? `🎉 ${ol} בינגו` : "עוד אין בינגו"}</p>
     <button class="linkbtn" id="bingoreset" type="button">🔄 לוח חדש לכולם</button></section>`;
 }
