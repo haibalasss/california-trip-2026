@@ -67,15 +67,19 @@ function quizHTML() {
     <div class="scores">${bar("b")}${bar("a")}</div><p class="src">${lead} · אתם משחקים בתור <b>${CARS[fam]}</b> (מחליפים למעלה בבחירת המשפחה). התשובה הראשונה של כל מכונית נחשבת. בלי קליטה הניקוד נשמר ונשלח כשהקליטה חוזרת${roadQ().length ? ` · ⏳ ${roadQ().length} ממתינים לשליחה` : ""}.</p>${card}</section>`;
 }
 function bingoKey() { return "bingo:" + fam + ":" + today; }
+/* Everyone shares one board and one reset: a reset event (sent with the password) clears the marks on both cars.
+   Marks stay per family. Each phone applies the newest reset once, then keeps its own marks. */
+const bingoEpoch = () => ROADEV.filter(e => e.k === "bingoreset").reduce((m, e) => e.at > m ? e.at : m, "");
+function bingoApplyReset() { const ep = bingoEpoch(); if (ep && ep > store.get("bingoepoch:" + fam, "")) { store.set("bingoepoch:" + fam, ep); store.set(bingoKey(), {}); } }
 function bingoLines(m) { const L = []; for (let i = 0; i < 4; i++) { L.push([0, 1, 2, 3].map(j => i * 4 + j)); L.push([0, 1, 2, 3].map(j => j * 4 + i)); } L.push([0, 5, 10, 15], [3, 6, 9, 12]); return L.filter(l => l.every(i => m[i])).length; }
 function bingoHTML() {
-  const m = store.get(bingoKey(), {}), lines = bingoLines(m), other = fam === "a" ? "b" : "a";
-  const ob = ROADEV.filter(e => e.k === "bingo" && e.day === today);
-  const best = f => Math.max(0, ...ob.filter(e => e.fam === f).map(e => e.n));
-  return `<section class="group road"><h2>🎯 בינגו דרכים</h2><p class="src">רואים משהו מהלוח? לוחצים עליו. שורה, טור או אלכסון שלם זה בינגו!</p>
+  bingoApplyReset();
+  const m = store.get(bingoKey(), {}), lines = bingoLines(m), other = fam === "a" ? "b" : "a", ep = bingoEpoch();
+  const latest = f => { const ev = ROADEV.filter(e => e.k === "bingo" && e.fam === f && e.day === today && e.at > ep).sort((x, y) => x.at.localeCompare(y.at)); return ev.length ? ev[ev.length - 1].n : 0; };
+  return `<section class="group road"><h2>🎯 בינגו דרכים</h2><p class="src">לוח אחד לכולם, והסימונים לפי משפחה. רואים משהו מהלוח? לוחצים עליו. לחיצה נוספת מבטלת. שורה, טור או אלכסון שלם זה בינגו!</p>
     <div class="bingo">${BINGO.map((t, i) => `<button class="bcell${m[i] ? " on" : ""}" data-b="${i}" type="button" aria-pressed="${!!m[i]}">${esc(t)}</button>`).join("")}</div>
-    <p class="bstat">${lines ? `🎉 ${lines} בינגו אצלכם` : "עוד אין בינגו"} · ${CARS[other]}: ${best(other) ? `🎉 ${best(other)} בינגו` : "עוד אין בינגו"}</p>
-    <button class="linkbtn" id="bingoreset" type="button">🔄 לוח חדש</button></section>`;
+    <p class="bstat">${lines ? `🎉 ${lines} בינגו אצלכם` : "עוד אין בינגו"} · ${CARS[other]}: ${latest(other) ? `🎉 ${latest(other)} בינגו` : "עוד אין בינגו"}</p>
+    <button class="linkbtn" id="bingoreset" type="button">🔄 לוח חדש לכולם</button></section>`;
 }
 function renderRoad() { return quizHTML() + bingoHTML(); }
 document.addEventListener("click", e => {
@@ -84,7 +88,8 @@ document.addEventListener("click", e => {
   if (e.target.closest("#qnext")) { roadPick = null; render(); window.scrollTo({ top: 0 }); return; }
   const c = e.target.closest(".bcell[data-b]");
   if (c) { const m = store.get(bingoKey(), {}), i = +c.dataset.b, before = bingoLines(m); m[i] = !m[i]; store.set(bingoKey(), m); const after = bingoLines(m);
-    if (after > before) { toast("🎉 בינגו!"); roadAdd({ k: "bingo", fam, day: today, n: after }); } render(); return; }
+    if (after > before) toast("🎉 בינגו!");
+    if (after !== before) roadAdd({ k: "bingo", fam, day: today, n: after }); render(); return; }
   if (e.target.closest("#bingoreset")) { askBingoPw(); return; }
 });
 addEventListener("online", roadSync);
@@ -96,7 +101,7 @@ function askBingoPw() {
   let sh = document.getElementById("bingopw");
   if (!sh) {
     document.body.insertAdjacentHTML("beforeend", `<div class="scrim" id="bingopw" hidden><form class="sheet" id="bingopwform" autocomplete="off">
-      <h2>🔄 לוח בינגו חדש</h2><p>כדי למחוק את הלוח הנוכחי ולהתחיל מחדש, מקלידים את הסיסמה המשפחתית.</p>
+      <h2>🔄 לוח בינגו חדש</h2><p>האיפוס מוחק את הסימונים בשתי המכוניות. כדי להמשיך, מקלידים את הסיסמה המשפחתית.</p>
       <input type="password" id="bingopwin" aria-label="סיסמה" autocomplete="current-password"><div class="err" id="bingopwerr" role="alert"></div>
       <div class="btns"><button type="button" id="bingopwcancel">ביטול</button><button type="submit" class="go">אישור</button></div></form></div>`);
     sh = document.getElementById("bingopw");
@@ -108,7 +113,7 @@ function askBingoPw() {
       err.textContent = "בודק…";
       try { const key = await deriveKey(document.getElementById("bingopwin").value); await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64d(VAULT.iv) }, key, b64d(VAULT.ct)); }
       catch (x) { err.textContent = "הסיסמה שגויה."; return; }
-      store.set(bingoKey(), {}); sh.hidden = true; render(); toast("לוח חדש 🎯");
+      roadAdd({ k: "bingoreset", fam }); sh.hidden = true; render(); toast("לוח חדש לשתי המכוניות 🎯");
     };
   }
   document.getElementById("bingopwerr").textContent = ""; document.getElementById("bingopwin").value = ""; sh.hidden = false;
