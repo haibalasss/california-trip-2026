@@ -392,7 +392,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.22-2";
+const APP_VERSION = "2026.11.22-3";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -503,8 +503,18 @@ function render() {
   const open = [...document.querySelectorAll("details")].map(x => [x.id, x.open]);
   const mapOpen = !$("#map")?.hidden;
   if (mapInst) { mapInst.remove(); mapInst = null; }
-  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : view === "road" ? renderRoad() : renderPack();
-  if (view === "food") initFood();
+  /* Never leave the screen blank (reported: blank Discover tab). If a tab's code is not loaded yet or throws,
+     show a message with a retry button instead of an empty page, and try again once everything has loaded. */
+  let html;
+  try { html = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : view === "road" ? renderRoad() : renderPack(); }
+  catch (err) {
+    console.error(err);
+    if (document.readyState !== "complete" && !render.retry) { render.retry = true; addEventListener("load", () => { render.retry = false; render(); }, { once: true }); }
+    html = `<section class="group"><h2>משהו לא נטען</h2><p class="src">נסו שוב. אם זה חוזר, פתחו טיקט 🐞 וכתבו באיזו לשונית זה קרה.</p><button class="btn primary" id="retrybtn" type="button">🔄 נסו שוב</button></section>`;
+  }
+  $("#view").innerHTML = html;
+  const rb = $("#retrybtn"); if (rb) rb.onclick = () => render();
+  if (view === "food" && typeof initFood === "function" && !rb) initFood();
   open.forEach(([id, o]) => { const el = id && document.getElementById(id); if (el) el.open = o; });
   hydrateImages($("#view"));
   if (view === "days") { $("#mapbtn").onclick = () => { const m = $("#map"); if (!m.hidden) { m.hidden = true; if (mapInst) { mapInst.remove(); mapInst = null; } } else showMap(d); };
@@ -542,6 +552,8 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => { view = t.data
 document.querySelectorAll(".famb").forEach(b => b.onclick = () => { if (fam === b.dataset.fam) return; fam = b.dataset.fam; store.set("fam", fam); pickToday(); render(); window.scrollTo({ top: 0 }); toast("משפחת " + FAMILIES[fam]); });
 
 render();
+/* The tab scripts load after this file; draw again once they are all there (fixes a blank first screen on Discover/Food/Road). */
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => render(), { once: true });
 requestAnimationFrame(() => setTimeout(() => { tryStoredKey(); loadWeather(true); loadFlights(); }, 0));
 setInterval(() => { loadFlights(); if (view === "days" && $("#unlock").hidden && $("#map").hidden) render(); }, 5 * 60000);
 setInterval(() => loadWeather(true), 30 * 60000);
