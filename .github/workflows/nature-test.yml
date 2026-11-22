@@ -1,0 +1,24 @@
+name: Nature upload test (temporary)
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          TOPIC=trip26-test-$RANDOM$RANDOM
+          # a real small JPEG-ish binary (random bytes with JPEG header) of 150 KB
+          (printf '\xff\xd8\xff\xe0'; head -c 150000 /dev/urandom) > /tmp/p.jpg
+          echo "--- CORS preflight for a browser PUT with custom header"
+          curl -s -i -X OPTIONS "https://ntfy.sh/$TOPIC" -H "Origin: https://haibalasss.github.io" -H "Access-Control-Request-Method: PUT" -H "Access-Control-Request-Headers: filename,content-type" | head -12
+          echo "--- upload (PUT, binary, Filename header)"
+          curl -s -X PUT "https://ntfy.sh/$TOPIC" -H "Filename: n3_2_abc_dev1.jpg" -H "Content-Type: image/jpeg" -H "Origin: https://haibalasss.github.io" --data-binary @/tmp/p.jpg | tee /tmp/up.json | head -c 700; echo
+          URL=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("/tmp/up.json","utf8")).attachment?.url||"")')
+          echo "attachment url: $URL"
+          echo "--- download it back"
+          curl -s -i "$URL" -H "Origin: https://haibalasss.github.io" -o /tmp/back.jpg -D - | head -12; ls -l /tmp/back.jpg
+          echo "--- poll shows attachment info"
+          curl -s "https://ntfy.sh/$TOPIC/json?poll=1&since=all" | head -c 700; echo
+          echo "--- SSE shape"
+          timeout 4 curl -s -N "https://ntfy.sh/$TOPIC/sse?since=all" | head -c 600; echo
