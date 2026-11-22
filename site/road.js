@@ -1,7 +1,8 @@
 /* ---------- Road tab: car-vs-car trivia and road bingo for the drives ----------
    Each family is a car. Answers and bingos are kept on the phone first and synced through a shared ntfy.sh topic
    when there is reception, so it works in the mountains too. One answer per question per car (the first one counts). */
-const ROAD_TOPIC = "trip26-road-m8agutcbf4", ROAD_NTFY = "https://ntfy.sh/" + ROAD_TOPIC;
+const ROAD_BASE = (location.hostname === "localhost" && new URLSearchParams(location.search).get("ntfy")) || "https://ntfy.sh/";
+const ROAD_TOPIC = "trip26-road-m8agutcbf4", ROAD_NTFY = ROAD_BASE + ROAD_TOPIC;
 const CARS = { b: "🚙 מכונית בלס", a: "🚗 מכונית בן אדרת" };
 const QUIZ = [
   ["באיזו שנה נפתח גשר הגולדן גייט?", ["1937", "1907", "1967"], "הגשר נפתח ב-1937. אז הוא היה גשר התלוי הארוך בעולם."],
@@ -34,14 +35,32 @@ let ROADEV = store.get("roadev", []);   // all known events (mine + synced)
 const roadQ = () => store.get("roadq", []);
 let roadSeq = 0;
 function roadAdd(ev) { ev.id = roadDev + Date.now().toString(36) + (roadSeq++).toString(36); ev.at = ev.at || new Date().toISOString(); ev.dev = roadDev; ROADEV.push(ev); store.set("roadev", ROADEV); const q = roadQ(); q.push(ev); store.set("roadq", q); roadSync(); }
+function roadMerge(list) {
+  const ids = new Set(ROADEV.map(e => e.id)); let added = 0;
+  list.forEach(e => { if (e && e.id && !ids.has(e.id)) { ids.add(e.id); ROADEV.push(e); added++; } });
+  if (added) { store.set("roadev", ROADEV); if (view === "road") { clearTimeout(roadMerge.t); roadMerge.t = setTimeout(() => { if (view === "road") render(); }, 120); } }
+  return added;
+}
+/* Live updates: while the Road tab is open the phone listens to the shared topic (server-sent events), so a tap on one
+   phone shows on the others within a second or two. If the stream drops, the 15-second poll below catches up. */
+let roadES = null;
+function roadStream() {
+  if (view !== "road" || document.visibilityState !== "visible" || !window.EventSource || roadES) return;
+  try {
+    roadES = new EventSource(ROAD_NTFY + "/sse?since=all");
+    roadES.onmessage = m => { try { const j = JSON.parse(m.data); if (j.event === "message") roadMerge([JSON.parse(j.message)]); } catch (e) { } };
+    roadES.onerror = () => { /* the browser reconnects by itself */ };
+  } catch (e) { roadES = null; }
+}
+function roadStreamStop() { if (roadES) { roadES.close(); roadES = null; } }
+setInterval(() => { if (view === "road" && document.visibilityState === "visible") roadStream(); else roadStreamStop(); }, 2000);
 async function roadSync() {
   if (roadSync.busy || !navigator.onLine) return; roadSync.busy = true;
   try {
     for (const ev of roadQ()) { const r = await fetch(ROAD_NTFY, { method: "POST", body: JSON.stringify(ev) }); if (r.ok) store.set("roadq", roadQ().filter(x => x.id !== ev.id)); }
     const r = await fetch(ROAD_NTFY + "/json?poll=1&since=all", { cache: "no-store" });
     if (r.ok) { const got = (await r.text()).split("\n").filter(Boolean).map(l => { try { const m = JSON.parse(l); return m.event === "message" ? JSON.parse(m.message) : null; } catch (e) { return null; } }).filter(e => e && e.id);
-      const ids = new Set(ROADEV.map(e => e.id)); let added = 0; got.forEach(e => { if (!ids.has(e.id)) { ROADEV.push(e); added++; } });
-      if (added) { store.set("roadev", ROADEV); if (view === "road") render(); } }
+      roadMerge(got); }
   } catch (e) { } finally { roadSync.busy = false; }
 }
 /* Score: first answer per car per question counts */
@@ -79,12 +98,15 @@ function bingoMarks(f) {
   ROADEV.filter(e => e.k === "mark" && e.fam === f && e.day === today && e.at > ep).sort((x, y) => x.at < y.at ? -1 : x.at > y.at ? 1 : x.id < y.id ? -1 : 1).forEach(e => { m[e.i] = !!e.on; });
   return m;
 }
-/* One time per phone and day: marks that were only saved on this phone become shared marks (oldest possible timestamp, so any
-   newer tap from anywhere still wins, and a reset still clears them). */
+/* Marks that were saved only on one phone (before sharing existed, on the 4x4 or the 5x5 board) become shared marks.
+   Done per cell and only once per cell (so an un-tap or a reset is never undone). They get the oldest possible timestamp, so
+   any newer tap from anywhere still wins. The old data is never deleted from the phone. */
 function bingoCarryOver() {
-  const flag = "bingomig:" + fam + ":" + today; if (store.get(flag, false)) return; store.set(flag, true);
-  const old = store.get(bingoKey(), {}), cur = bingoMarks(fam);
-  Object.keys(old).filter(i => old[i] && !(i in cur)).forEach(i => roadAdd({ k: "mark", fam, day: today, i: +i, on: true, at: "2000-01-01T00:00:00.000Z" }));
+  const cur = bingoMarks(fam), done = store.get("bingocarried:" + fam + ":" + today, {});
+  const old = Object.assign({}, store.get("bingo:" + fam + ":" + today, {}), store.get(bingoKey(), {}));   // 4x4 and 5x5 keys: same item numbering
+  let changed = false;
+  Object.keys(old).filter(i => old[i] && !done[i] && +i < BINGO.length).forEach(i => { done[i] = 1; changed = true; if (!(i in cur)) roadAdd({ k: "mark", fam, day: today, i: +i, on: true, at: "2000-01-01T00:00:00.000Z" }); });
+  if (changed) store.set("bingocarried:" + fam + ":" + today, done);
 }
 function bingoLines(m) { const L = [], r = [...Array(BN).keys()]; for (let i = 0; i < BN; i++) { L.push(r.map(j => i * BN + j)); L.push(r.map(j => j * BN + i)); } L.push(r.map(j => j * (BN + 1)), r.map(j => j * (BN - 1) + BN - 1)); return L.filter(l => l.every(i => m[i])).length; }
 function bingoHTML() {
