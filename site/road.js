@@ -32,7 +32,8 @@ const BN = 5;   // board is BN x BN
 const roadDev = (() => { let d = store.get("roaddev", ""); if (!d) { d = Math.random().toString(36).slice(2, 8); store.set("roaddev", d); } return d; })();
 let ROADEV = store.get("roadev", []);   // all known events (mine + synced)
 const roadQ = () => store.get("roadq", []);
-function roadAdd(ev) { ev.id = roadDev + Date.now().toString(36); ev.at = new Date().toISOString(); ev.dev = roadDev; ROADEV.push(ev); store.set("roadev", ROADEV); const q = roadQ(); q.push(ev); store.set("roadq", q); roadSync(); }
+let roadSeq = 0;
+function roadAdd(ev) { ev.id = roadDev + Date.now().toString(36) + (roadSeq++).toString(36); ev.at = ev.at || new Date().toISOString(); ev.dev = roadDev; ROADEV.push(ev); store.set("roadev", ROADEV); const q = roadQ(); q.push(ev); store.set("roadq", q); roadSync(); }
 async function roadSync() {
   if (roadSync.busy || !navigator.onLine) return; roadSync.busy = true;
   try {
@@ -68,19 +69,30 @@ function quizHTML() {
   return `<section class="group road"><h2>🏆 טריוויה: מכונית מול מכונית</h2>
     <div class="scores">${bar("b")}${bar("a")}</div><p class="src">${lead} · אתם משחקים בתור <b>${CARS[fam]}</b> (מחליפים למעלה בבחירת המשפחה). התשובה הראשונה של כל מכונית נחשבת. בלי קליטה הניקוד נשמר ונשלח כשהקליטה חוזרת${roadQ().length ? ` · ⏳ ${roadQ().length} ממתינים לשליחה` : ""}.</p>${card}</section>`;
 }
-function bingoKey() { return "bingo5:" + fam + ":" + today; }
-/* Everyone shares one board and one reset: a reset event (sent with the password) clears the marks on both cars.
-   Marks stay per family. Each phone applies the newest reset once, then keeps its own marks. */
+function bingoKey() { return "bingo5:" + fam + ":" + today; }   // old per-phone marks: only read once, to carry them over
+/* Marks are shared by every phone of the same family: each tap is an event ("mark" cell on/off), the newest event per
+   cell wins, and phones merge events (never overwrite each other). One board for everyone; one reset event (sent with
+   the password) clears the marks on both cars. Events from before the reset are ignored, nothing else ever clears marks. */
 const bingoEpoch = () => ROADEV.filter(e => e.k === "bingoreset").reduce((m, e) => e.at > m ? e.at : m, "");
-function bingoApplyReset() { const ep = bingoEpoch(); if (ep && ep > store.get("bingoepoch:" + fam, "")) { store.set("bingoepoch:" + fam, ep); store.set(bingoKey(), {}); } }
+function bingoMarks(f) {
+  const ep = bingoEpoch(), m = {};
+  ROADEV.filter(e => e.k === "mark" && e.fam === f && e.day === today && e.at > ep).sort((x, y) => x.at < y.at ? -1 : x.at > y.at ? 1 : x.id < y.id ? -1 : 1).forEach(e => { m[e.i] = !!e.on; });
+  return m;
+}
+/* One time per phone and day: marks that were only saved on this phone become shared marks (oldest possible timestamp, so any
+   newer tap from anywhere still wins, and a reset still clears them). */
+function bingoCarryOver() {
+  const flag = "bingomig:" + fam + ":" + today; if (store.get(flag, false)) return; store.set(flag, true);
+  const old = store.get(bingoKey(), {}), cur = bingoMarks(fam);
+  Object.keys(old).filter(i => old[i] && !(i in cur)).forEach(i => roadAdd({ k: "mark", fam, day: today, i: +i, on: true, at: "2000-01-01T00:00:00.000Z" }));
+}
 function bingoLines(m) { const L = [], r = [...Array(BN).keys()]; for (let i = 0; i < BN; i++) { L.push(r.map(j => i * BN + j)); L.push(r.map(j => j * BN + i)); } L.push(r.map(j => j * (BN + 1)), r.map(j => j * (BN - 1) + BN - 1)); return L.filter(l => l.every(i => m[i])).length; }
 function bingoHTML() {
-  bingoApplyReset();
-  const m = store.get(bingoKey(), {}), lines = bingoLines(m), other = fam === "a" ? "b" : "a", ep = bingoEpoch();
-  const latest = f => { const ev = ROADEV.filter(e => e.k === "bingo" && e.v === BN && e.fam === f && e.day === today && e.at > ep).sort((x, y) => x.at.localeCompare(y.at)); return ev.length ? ev[ev.length - 1].n : 0; };
-  return `<section class="group road"><h2>🎯 בינגו דרכים</h2><p class="src">לוח אחד לכולם, והסימונים לפי משפחה. רואים משהו מהלוח? לוחצים עליו. לחיצה נוספת מבטלת. שורה, טור או אלכסון שלם זה בינגו!</p>
+  bingoCarryOver();
+  const m = bingoMarks(fam), lines = bingoLines(m), other = fam === "a" ? "b" : "a", ol = bingoLines(bingoMarks(other));
+  return `<section class="group road"><h2>🎯 בינגו דרכים</h2><p class="src">לוח אחד לכולם. הסימונים משותפים לכל מי שבאותה מכונית, בכל הטלפונים. רואים משהו מהלוח? לוחצים עליו. לחיצה נוספת מבטלת. שורה, טור או אלכסון שלם זה בינגו!</p>
     <div class="bingo">${BINGO.map((t, i) => `<button class="bcell${m[i] ? " on" : ""}" data-b="${i}" type="button" aria-pressed="${!!m[i]}">${esc(t)}</button>`).join("")}</div>
-    <p class="bstat">${lines ? `🎉 ${lines} בינגו אצלכם` : "עוד אין בינגו"} · ${CARS[other]}: ${latest(other) ? `🎉 ${latest(other)} בינגו` : "עוד אין בינגו"}</p>
+    <p class="bstat">${lines ? `🎉 ${lines} בינגו אצלכם` : "עוד אין בינגו"} · ${CARS[other]}: ${ol ? `🎉 ${ol} בינגו` : "עוד אין בינגו"}</p>
     <button class="linkbtn" id="bingoreset" type="button">🔄 לוח חדש לכולם</button></section>`;
 }
 /* Each game opens at a set time (California time) on the drive day; before that it shows a countdown instead of the game. */
@@ -107,13 +119,12 @@ document.addEventListener("click", e => {
   if (o && !o.disabled) { const qi = +o.dataset.qi, ch = +o.dataset.ch; roadPick = { qi, choice: ch }; roadAdd({ k: "q", fam, qi, ch, ok: ch === 0 }); render(); return; }
   if (e.target.closest("#qnext")) { roadPick = null; render(); window.scrollTo({ top: 0 }); return; }
   const c = e.target.closest(".bcell[data-b]");
-  if (c) { const m = store.get(bingoKey(), {}), i = +c.dataset.b, before = bingoLines(m); m[i] = !m[i]; store.set(bingoKey(), m); const after = bingoLines(m);
-    if (after > before) toast("🎉 בינגו!");
-    if (after !== before) roadAdd({ k: "bingo", v: BN, fam, day: today, n: after }); render(); return; }
+  if (c) { const i = +c.dataset.b, m = bingoMarks(fam), before = bingoLines(m); roadAdd({ k: "mark", fam, day: today, i, on: !m[i] });
+    if (bingoLines(bingoMarks(fam)) > before) toast("🎉 בינגו!"); render(); return; }
   if (e.target.closest("#bingoreset")) { askBingoPw(); return; }
 });
 addEventListener("online", roadSync);
-setInterval(() => { if (document.visibilityState === "visible") roadSync(); }, 60000);
+setInterval(() => { if (document.visibilityState === "visible") roadSync(); }, 15000);
 setTimeout(roadSync, 4000);
 
 /* "New board" needs the family password (checked by trying to open the vault, so the password itself is never in the code). */
