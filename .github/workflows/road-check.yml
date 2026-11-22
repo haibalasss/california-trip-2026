@@ -1,0 +1,21 @@
+name: Road events check (read only)
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          T=$(grep -o 'ROAD_TOPIC = "[^"]*"' site/road.js | cut -d'"' -f2)
+          curl -s "https://ntfy.sh/$T/json?poll=1&since=all" > /tmp/ev.jsonl
+          node -e '
+          const L=require("fs").readFileSync("/tmp/ev.jsonl","utf8").split("\n").filter(Boolean).map(l=>{try{const m=JSON.parse(l);return m.event==="message"?JSON.parse(m.message):null}catch(e){return null}}).filter(Boolean);
+          console.log("TOTAL",L.length);
+          const c={};L.forEach(e=>{const k=[e.k,e.fam,e.day||"-"].join("|");c[k]=(c[k]||0)+1});console.log("BYKIND",JSON.stringify(c));
+          console.log("RESETS",JSON.stringify(L.filter(e=>e.k==="bingoreset").map(e=>[e.at,e.fam,e.dev])));
+          const ep=L.filter(e=>e.k==="bingoreset").map(e=>e.at).sort().pop()||"";
+          for(const f of ["a","b"]){const m={};L.filter(e=>e.k==="mark"&&e.fam===f&&e.at>ep).sort((x,y)=>x.at<y.at?-1:1).forEach(e=>m[e.i]=e.on);console.log("MARKS",f,JSON.stringify(Object.keys(m).filter(i=>m[i])))}
+          console.log("DEVICES",JSON.stringify([...new Set(L.map(e=>e.fam+":"+e.dev))]));
+          console.log("FIRST",L.map(e=>e.at).sort()[0],"LAST",L.map(e=>e.at).sort().pop());'
