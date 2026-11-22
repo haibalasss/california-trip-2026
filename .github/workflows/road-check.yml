@@ -1,0 +1,17 @@
+name: Road events check (read only)
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          T=$(grep -o 'ROAD_TOPIC = "[^"]*"' site/road.js | cut -d'"' -f2)
+          curl -s "https://ntfy.sh/$T/json?poll=1&since=all" > /tmp/ev.jsonl; wc -l /tmp/ev.jsonl
+          node -e '
+          const L=require("fs").readFileSync("/tmp/ev.jsonl","utf8").split("\n").filter(Boolean).map(l=>{try{const m=JSON.parse(l);return m.event==="message"?JSON.parse(m.message):null}catch(e){return null}}).filter(Boolean);
+          const c={};L.forEach(e=>{const k=[e.k,e.fam,e.dev,e.day||""].join("|");c[k]=(c[k]||0)+1});console.log(c);
+          const marks=L.filter(e=>e.k==="mark").map(e=>[e.at,e.fam,e.dev,e.i,e.on].join(","));console.log(marks.slice(-30).join("\n"));
+          console.log("resets",L.filter(e=>e.k==="bingoreset").map(e=>e.at+" "+e.fam));'
