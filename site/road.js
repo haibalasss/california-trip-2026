@@ -26,7 +26,9 @@ const QUIZ = [
   ["איזו חיה קטנה עם פסים על הגב תראו הרבה ביוסמיטי?", ["צ'יפמאנק", "אוגר", "דביבון"], "צ'יפמאנק הוא סנאי קרקע קטן. הם חמודים, אבל אסור להאכיל אותם: הם נושכים ומתרגלים לאוכל של בני אדם."],
 ];
 const BINGO = ["🚙 לוחית מנבדה", "🗺️ לוחית ממדינה רחוקה", "⚡ טסלה", "🐄 פרה", "🐎 סוס", "🍔 In-N-Out", "🌉 גשר", "🐻 שלט דובים",
-  "🛻 טנדר ענק", "🌸 מכונית ורודה", "🏞️ שלט Yosemite", "🌊 נהר", "🌳 מטע שקדים", "🚂 רכבת", "🚐 קרוואן", "🪵 משאית עם עצים"];
+  "🛻 טנדר ענק", "🌸 מכונית ורודה", "🏞️ שלט Yosemite", "🌊 נהר", "🌳 מטע שקדים", "🚂 רכבת", "🚐 קרוואן", "🪵 משאית עם עצים",
+  "🚓 ניידת משטרה", "🏍️ אופנוע", "🏔️ הר עם שלג", "🚧 עבודות בכביש", "🦅 ציפור גדולה", "🚌 אוטובוס", "⛽ תחנת דלק", "🌲 עץ ענק", "🐿️ סנאי"];
+const BN = 5;   // board is BN x BN
 const roadDev = (() => { let d = store.get("roaddev", ""); if (!d) { d = Math.random().toString(36).slice(2, 8); store.set("roaddev", d); } return d; })();
 let ROADEV = store.get("roadev", []);   // all known events (mine + synced)
 const roadQ = () => store.get("roadq", []);
@@ -66,16 +68,16 @@ function quizHTML() {
   return `<section class="group road"><h2>🏆 טריוויה: מכונית מול מכונית</h2>
     <div class="scores">${bar("b")}${bar("a")}</div><p class="src">${lead} · אתם משחקים בתור <b>${CARS[fam]}</b> (מחליפים למעלה בבחירת המשפחה). התשובה הראשונה של כל מכונית נחשבת. בלי קליטה הניקוד נשמר ונשלח כשהקליטה חוזרת${roadQ().length ? ` · ⏳ ${roadQ().length} ממתינים לשליחה` : ""}.</p>${card}</section>`;
 }
-function bingoKey() { return "bingo:" + fam + ":" + today; }
+function bingoKey() { return "bingo5:" + fam + ":" + today; }
 /* Everyone shares one board and one reset: a reset event (sent with the password) clears the marks on both cars.
    Marks stay per family. Each phone applies the newest reset once, then keeps its own marks. */
 const bingoEpoch = () => ROADEV.filter(e => e.k === "bingoreset").reduce((m, e) => e.at > m ? e.at : m, "");
 function bingoApplyReset() { const ep = bingoEpoch(); if (ep && ep > store.get("bingoepoch:" + fam, "")) { store.set("bingoepoch:" + fam, ep); store.set(bingoKey(), {}); } }
-function bingoLines(m) { const L = []; for (let i = 0; i < 4; i++) { L.push([0, 1, 2, 3].map(j => i * 4 + j)); L.push([0, 1, 2, 3].map(j => j * 4 + i)); } L.push([0, 5, 10, 15], [3, 6, 9, 12]); return L.filter(l => l.every(i => m[i])).length; }
+function bingoLines(m) { const L = [], r = [...Array(BN).keys()]; for (let i = 0; i < BN; i++) { L.push(r.map(j => i * BN + j)); L.push(r.map(j => j * BN + i)); } L.push(r.map(j => j * (BN + 1)), r.map(j => j * (BN - 1) + BN - 1)); return L.filter(l => l.every(i => m[i])).length; }
 function bingoHTML() {
   bingoApplyReset();
   const m = store.get(bingoKey(), {}), lines = bingoLines(m), other = fam === "a" ? "b" : "a", ep = bingoEpoch();
-  const latest = f => { const ev = ROADEV.filter(e => e.k === "bingo" && e.fam === f && e.day === today && e.at > ep).sort((x, y) => x.at.localeCompare(y.at)); return ev.length ? ev[ev.length - 1].n : 0; };
+  const latest = f => { const ev = ROADEV.filter(e => e.k === "bingo" && e.v === BN && e.fam === f && e.day === today && e.at > ep).sort((x, y) => x.at.localeCompare(y.at)); return ev.length ? ev[ev.length - 1].n : 0; };
   return `<section class="group road"><h2>🎯 בינגו דרכים</h2><p class="src">לוח אחד לכולם, והסימונים לפי משפחה. רואים משהו מהלוח? לוחצים עליו. לחיצה נוספת מבטלת. שורה, טור או אלכסון שלם זה בינגו!</p>
     <div class="bingo">${BINGO.map((t, i) => `<button class="bcell${m[i] ? " on" : ""}" data-b="${i}" type="button" aria-pressed="${!!m[i]}">${esc(t)}</button>`).join("")}</div>
     <p class="bstat">${lines ? `🎉 ${lines} בינגו אצלכם` : "עוד אין בינגו"} · ${CARS[other]}: ${latest(other) ? `🎉 ${latest(other)} בינגו` : "עוד אין בינגו"}</p>
@@ -89,7 +91,7 @@ document.addEventListener("click", e => {
   const c = e.target.closest(".bcell[data-b]");
   if (c) { const m = store.get(bingoKey(), {}), i = +c.dataset.b, before = bingoLines(m); m[i] = !m[i]; store.set(bingoKey(), m); const after = bingoLines(m);
     if (after > before) toast("🎉 בינגו!");
-    if (after !== before) roadAdd({ k: "bingo", fam, day: today, n: after }); render(); return; }
+    if (after !== before) roadAdd({ k: "bingo", v: BN, fam, day: today, n: after }); render(); return; }
   if (e.target.closest("#bingoreset")) { askBingoPw(); return; }
 });
 addEventListener("online", roadSync);

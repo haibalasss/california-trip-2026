@@ -402,8 +402,8 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .road .qopt.ok{background:#1E8E4E;border-color:#1E8E4E;color:#fff}.road .qopt.bad{background:#C0392B;border-color:#C0392B;color:#fff}
 .road .qopt:disabled{cursor:default;opacity:1}.road .qopt:disabled:not(.ok):not(.bad){opacity:.55}
 .road .qex{margin:0;font-size:14.5px}.road .qdone{font-size:17px;font-weight:600}
-.road .bingo{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.road .bcell{font:inherit;font-size:12.5px;line-height:1.25;min-height:64px;padding:6px 4px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.road .bingo{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.road .bcell{font:inherit;font-size:11px;line-height:1.2;min-height:62px;padding:4px 2px;overflow-wrap:anywhere;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
 .road .bcell.on{background:var(--sea);border-color:var(--sea);color:var(--on-sea);font-weight:700}
 .road .bstat{font-weight:600;margin:4px 0 0}
 #view{padding-bottom:72px}
