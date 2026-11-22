@@ -392,7 +392,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.22-1";
+const APP_VERSION = "2026.11.22-2";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
@@ -503,7 +503,7 @@ function render() {
   const open = [...document.querySelectorAll("details")].map(x => [x.id, x.open]);
   const mapOpen = !$("#map")?.hidden;
   if (mapInst) { mapInst.remove(); mapInst = null; }
-  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : renderPack();
+  $("#view").innerHTML = view === "days" ? renderDay() : view === "docs" ? renderDocs() : view === "clothes" ? renderClothes() : view === "food" ? renderFood() : view === "discover" ? renderDiscover() : view === "road" ? renderRoad() : renderPack();
   if (view === "food") initFood();
   open.forEach(([id, o]) => { const el = id && document.getElementById(id); if (el) el.open = o; });
   hydrateImages($("#view"));
