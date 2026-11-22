@@ -83,7 +83,25 @@ function bingoHTML() {
     <p class="bstat">${lines ? `🎉 ${lines} בינגו אצלכם` : "עוד אין בינגו"} · ${CARS[other]}: ${latest(other) ? `🎉 ${latest(other)} בינגו` : "עוד אין בינגו"}</p>
     <button class="linkbtn" id="bingoreset" type="button">🔄 לוח חדש לכולם</button></section>`;
 }
-function renderRoad() { return quizHTML() + bingoHTML(); }
+/* Each game opens at a set time (California time) on the drive day; before that it shows a countdown instead of the game. */
+const GAME_OPEN = { date: "2026-11-22", bingo: "09:30", quiz: "10:15" };
+const gameOpenAt = g => Date.parse(`${GAME_OPEN.date}T${GAME_OPEN[g]}:00-08:00`);
+function gameLeft(g) { return GAME_OPEN.date === today ? gameOpenAt(g) - Date.now() : (today < GAME_OPEN.date ? gameOpenAt(g) - Date.now() : 0); }
+function gameFmt(ms) { const t = Math.ceil(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sc = t % 60, p = n => String(n).padStart(2, "0"); return (h ? h + ":" + p(m) : m) + ":" + p(sc); }
+function lockedHTML(g, title) {
+  const ms = gameLeft(g);
+  return `<section class="group road locked" data-game="${g}"><h2>${title}</h2><div class="gcd"><span class="glock">🔒</span><b dir="ltr" data-cd="${g}">${gameFmt(ms)}</b><span>עד שהמשחק נפתח, ב-${GAME_OPEN[g]} שעון קליפורניה</span></div></section>`;
+}
+function renderRoad() {
+  return (gameLeft("bingo") > 0 ? lockedHTML("bingo", "🎯 בינגו דרכים") : bingoHTML()) + (gameLeft("quiz") > 0 ? lockedHTML("quiz", "🏆 טריוויה: מכונית מול מכונית") : quizHTML());
+}
+/* Tick the countdowns; the moment a game opens, redraw so it appears (with a toast). */
+setInterval(() => {
+  if (view !== "road") return;
+  let open = false;
+  document.querySelectorAll("[data-cd]").forEach(el => { const g = el.dataset.cd, ms = gameLeft(g); if (ms <= 0) { open = true; toast(g === "bingo" ? "🎯 הבינגו נפתח!" : "🏆 הטריוויה נפתחה!"); } else el.textContent = gameFmt(ms); });
+  if (open) render();
+}, 1000);
 document.addEventListener("click", e => {
   const o = e.target.closest(".qopt[data-qi]");
   if (o && !o.disabled) { const qi = +o.dataset.qi, ch = +o.dataset.ch; roadPick = { qi, choice: ch }; roadAdd({ k: "q", fam, qi, ch, ok: ch === 0 }); render(); return; }

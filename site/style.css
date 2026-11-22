@@ -407,3 +407,7 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .road .bcell.on{background:var(--sea);border-color:var(--sea);color:var(--on-sea);font-weight:700}
 .road .bstat{font-weight:600;margin:4px 0 0}
 #view{padding-bottom:72px}
+.road.locked .gcd{display:grid;justify-items:center;gap:6px;padding:26px 12px;border:1px dashed var(--line);border-radius:var(--r);background:var(--surface);text-align:center}
+.road.locked .glock{font-size:28px}
+.road.locked .gcd b{font-family:var(--f-display);font-size:clamp(44px,15vw,72px);line-height:1;font-variant-numeric:tabular-nums}
+.road.locked .gcd span:last-child{color:var(--muted);font-size:15px}
