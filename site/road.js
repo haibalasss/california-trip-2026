@@ -85,8 +85,32 @@ document.addEventListener("click", e => {
   const c = e.target.closest(".bcell[data-b]");
   if (c) { const m = store.get(bingoKey(), {}), i = +c.dataset.b, before = bingoLines(m); m[i] = !m[i]; store.set(bingoKey(), m); const after = bingoLines(m);
     if (after > before) { toast("🎉 בינגו!"); roadAdd({ k: "bingo", fam, day: today, n: after }); } render(); return; }
-  if (e.target.closest("#bingoreset")) { if (confirm("להתחיל לוח בינגו חדש?")) { store.set(bingoKey(), {}); render(); } }
+  if (e.target.closest("#bingoreset")) { askBingoPw(); return; }
 });
 addEventListener("online", roadSync);
 setInterval(() => { if (document.visibilityState === "visible") roadSync(); }, 60000);
 setTimeout(roadSync, 4000);
+
+/* "New board" needs the family password (checked by trying to open the vault, so the password itself is never in the code). */
+function askBingoPw() {
+  let sh = document.getElementById("bingopw");
+  if (!sh) {
+    document.body.insertAdjacentHTML("beforeend", `<div class="scrim" id="bingopw" hidden><form class="sheet" id="bingopwform" autocomplete="off">
+      <h2>🔄 לוח בינגו חדש</h2><p>כדי למחוק את הלוח הנוכחי ולהתחיל מחדש, מקלידים את הסיסמה המשפחתית.</p>
+      <input type="password" id="bingopwin" aria-label="סיסמה" autocomplete="current-password"><div class="err" id="bingopwerr" role="alert"></div>
+      <div class="btns"><button type="button" id="bingopwcancel">ביטול</button><button type="submit" class="go">אישור</button></div></form></div>`);
+    sh = document.getElementById("bingopw");
+    sh.onclick = e => { if (e.target === sh) sh.hidden = true; };
+    document.getElementById("bingopwcancel").onclick = () => sh.hidden = true;
+    document.getElementById("bingopwform").onsubmit = async e => {
+      e.preventDefault(); const err = document.getElementById("bingopwerr");
+      if (typeof VAULT === "undefined" || !crypto.subtle) { err.textContent = "הדפדפן הזה לא תומך בבדיקת סיסמה."; return; }
+      err.textContent = "בודק…";
+      try { const key = await deriveKey(document.getElementById("bingopwin").value); await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64d(VAULT.iv) }, key, b64d(VAULT.ct)); }
+      catch (x) { err.textContent = "הסיסמה שגויה."; return; }
+      store.set(bingoKey(), {}); sh.hidden = true; render(); toast("לוח חדש 🎯");
+    };
+  }
+  document.getElementById("bingopwerr").textContent = ""; document.getElementById("bingopwin").value = ""; sh.hidden = false;
+  setTimeout(() => document.getElementById("bingopwin").focus(), 50);
+}
