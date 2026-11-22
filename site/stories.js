@@ -109,24 +109,49 @@ const STORIES = {
   ] }
 };
 function storyFor(d) { return STORIES[d.d + "|" + fam] || STORIES[d.d]; }
-let ttsOn = false;
-function speakStory(btn) {
+/* Narration, one paragraph at a time (ticket 11212328cb): pause keeps the place, resume continues from the same
+   paragraph, and tapping any paragraph starts reading from it. ttsOn stays true while speaking (app.js stops it on navigation). */
+let ttsOn = false, ttsAt = 0, ttsKey = "", ttsRun = 0;
+function ttsParts(st) { return [st.t, ...st.p]; }
+function ttsUI() {
+  const btn = document.getElementById("ttsbtn"); if (btn) btn.textContent = ttsOn ? "⏸️ השהיה" : ttsAt > 0 ? "▶️ המשך" : "🔊 הקראה";
+  const rs = document.getElementById("ttsrestart"); if (rs) rs.hidden = ttsOn || ttsAt === 0;
+  document.querySelectorAll("#storyb p[data-p], .story h3[data-p]").forEach(el => el.classList.toggle("reading", ttsOn && +el.dataset.p === ttsAt));
+}
+function ttsStop(keep) { const s = window.speechSynthesis; ttsRun++; ttsOn = false; if (s) s.cancel(); if (!keep) ttsAt = 0; ttsUI(); }
+function ttsPlay(from) {
   const s = window.speechSynthesis; if (!s) { toast("הטלפון הזה לא תומך בהקראה"); return; }
-  if (ttsOn) { s.cancel(); ttsOn = false; btn.textContent = "🔊 הקראה"; return; }
-  const st = storyFor(daysFor(fam)[dayIdx]); if (!st) return;
-  const voices = s.getVoices(), he = voices.find(v => /^he|^iw/i.test(v.lang));
-  const parts = [st.t, ...st.p]; ttsOn = true; btn.textContent = "⏹️ עצירה";
-  parts.forEach((txt, i) => { const u = new SpeechSynthesisUtterance(txt); u.lang = "he-IL"; if (he) u.voice = he; u.rate = 0.95;
-    if (i === parts.length - 1) u.onend = () => { ttsOn = false; btn.textContent = "🔊 הקראה"; }; s.speak(u); });
+  const d = daysFor(fam)[dayIdx], st = storyFor(d); if (!st) return;
+  const key = d.d + "|" + fam; if (key !== ttsKey) { ttsKey = key; ttsAt = 0; }
+  if (from != null) ttsAt = from;
+  const parts = ttsParts(st), he = s.getVoices().find(v => /^he|^iw/i.test(v.lang)), run = ++ttsRun;
+  s.cancel(); ttsOn = true;
+  if (ttsAt > 0) { const b = document.getElementById("storyb"), m = document.getElementById("storymore"); if (b && !b.classList.contains("open")) { b.classList.add("open"); if (m) m.textContent = "סגירה ▲"; } }
+  const next = () => {
+    if (run !== ttsRun) return;
+    if (ttsAt >= parts.length) { ttsOn = false; ttsAt = 0; ttsUI(); return; }
+    ttsUI();
+    const u = new SpeechSynthesisUtterance(parts[ttsAt]); u.lang = "he-IL"; if (he) u.voice = he; u.rate = 0.95;
+    u.onend = () => { if (run !== ttsRun) return; ttsAt++; next(); };
+    u.onerror = () => { if (run !== ttsRun) return; ttsOn = false; ttsUI(); };
+    s.speak(u);
+  };
+  next();
   if (!he) toast("לא נמצא קול עברי בטלפון, ההקראה עשויה להישמע לא טוב");
 }
+function speakStory() { if (ttsOn) ttsStop(true); else ttsPlay(); }
 function storyHTML(d) {
   const st = storyFor(d); if (!st) return "";
-  return `<section class="story"><div class="story-h"><span class="story-k">📜 סיפור המדריך</span><button class="btn" id="ttsbtn" type="button">${ttsOn ? "⏹️ עצירה" : "🔊 הקראה"}</button></div>
-    <h3>${esc(st.t)}</h3><div class="story-b" id="storyb">${st.p.map(p => `<p>${esc(p)}</p>`).join("")}</div>
+  if (d.d + "|" + fam !== ttsKey) { ttsAt = 0; }
+  const lbl = ttsOn ? "⏸️ השהיה" : ttsAt > 0 ? "▶️ המשך" : "🔊 הקראה";
+  return `<section class="story"><div class="story-h"><span class="story-k">📜 סיפור המדריך</span><span class="story-btns"><button class="linkbtn" id="ttsrestart" type="button"${ttsOn || ttsAt === 0 ? " hidden" : ""}>⏮️ מההתחלה</button><button class="btn" id="ttsbtn" type="button">${lbl}</button></span></div>
+    <h3 data-p="0">${esc(st.t)}</h3><div class="story-b" id="storyb">${st.p.map((p, i) => `<p data-p="${i + 1}" title="לחצו כדי להקריא מכאן">${esc(p)}</p>`).join("")}</div>
+    <p class="story-hint">🔊 לוחצים על פסקה כדי להקריא ממנה</p>
     <button class="linkbtn" id="storymore" type="button">המשך לקרוא ▼</button></section>`;
 }
 document.addEventListener("click", e => {
-  if (e.target.closest("#ttsbtn")) { speakStory(e.target.closest("#ttsbtn")); return; }
+  if (e.target.closest("#ttsbtn")) { speakStory(); return; }
+  if (e.target.closest("#ttsrestart")) { ttsPlay(0); return; }
+  const sp = e.target.closest("#storyb p[data-p], .story h3[data-p]"); if (sp) { ttsPlay(+sp.dataset.p); return; }
   if (e.target.closest("#storymore")) { const b = document.getElementById("storyb"), m = document.getElementById("storymore"); const open = b.classList.toggle("open"); m.textContent = open ? "סגירה ▲" : "המשך לקרוא ▼"; }
 });

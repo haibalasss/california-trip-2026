@@ -35,10 +35,13 @@ function bugTabName() { const t = document.querySelector('.tab[aria-selected="tr
 function drawBugList() {
   const el = $("#buglist"); if (!el) return;
   const seen = new Set(BUGS.map(b => b.id));
-  const all = [...BUGS];
+  /* Closed tickets stay visible for 12 hours so the opener sees the answer, then leave the list (ticket 11212306b6).
+     They are kept in git (site/bugs.json) as history. */
+  const CLOSED = ["fixed", "notabug", "wont"], keep = 12 * 3600e3;
+  const all = BUGS.filter(b => !CLOSED.includes(b.s) || (b.closed && Date.now() - Date.parse(b.closed) < keep));
   for (const t of INBOX) if (!seen.has(t.id)) { seen.add(t.id); all.push({ ...t, s: "open" }); }
   for (const t of bugQ()) if (!seen.has(t.id)) { seen.add(t.id); all.push({ ...t, s: "queued" }); }
-  if (!all.length) { el.innerHTML = `<p>עוד אין טיקטים.</p>`; return; }
+  if (!all.length) { el.innerHTML = `<p>אין טיקטים פתוחים 🎉</p>`; return; }
   const lab = { open: ["🔴", "פתוח"], fixed: ["✅", "תוקן"], queued: ["⏳", "ממתין לאינטרנט, יישמר אוטומטית"], info: ["🟡", "המפתח צריך עוד פרטים"], notabug: ["🙅", "לא באג, לפי המפתח"], wont: ["⚪", "לא יתוקן"] };
   all.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
   el.innerHTML = all.map(b => { let [i, l] = lab[b.s] || lab.open; if (b.k === "feature" && b.s === "fixed") l = "נוסף"; const kk = b.k === "feature" ? "✨ פיצ'ר" : b.k === "bug" ? "🐞 באג" : ""; return `<li><div><b>${i} ${esc(b.t)}</b><span class="bmeta">${kk ? kk + " · " : ""}#${esc(b.id)} · נפתח ע"י <b>${esc(b.by)}</b> · ${l}</span>${b.r ? `<span class="bdev">👨‍💻 המפתח: ${esc(b.r)}</span>` : ""}${b.fix ? `<span class="bfix">🔧 ${esc(b.fix)}</span>` : ""}</div></li>`; }).join("");
@@ -54,7 +57,7 @@ function openBugSheet() {
   const s = $("#bugsheet"); s.hidden = false;
   $("#bugtab").textContent = bugTabName();
   $("#bugby").value = store.get("bugby", ""); $("#bugerr").textContent = "";
-  $("#bugt").value = ""; $("#bugd").value = ""; setBugKind("");
+  $("#bugt").value = ""; $("#bugd").value = ""; setBugKind(""); $("#bugt").dispatchEvent(new Event("input"));
   drawBugList(); loadBugs();
   setTimeout(() => ($("#bugby").value ? $("#bugt") : $("#bugby")).focus(), 50);
 }
@@ -80,8 +83,9 @@ async function sendBug(ev) {
   <label>מי פותח את הטיקט? <em>(חובה)</em><input id="bugby" list="bugnames" maxlength="30" placeholder="השם שלך"></label>
   <datalist id="bugnames">${BUG_NAMES.map(n => `<option value="${n}">`).join("")}</datalist>
   <div class="bugkind" role="radiogroup" aria-label="סוג הטיקט"><button type="button" data-k="bug" aria-pressed="false">🐞 באג</button><button type="button" data-k="feature" aria-pressed="false">✨ בקשה לפיצ'ר חדש</button></div>
-  <label><span id="bugtl">מה הבעיה?</span><input id="bugt" maxlength="90" placeholder="למשל: מזג האוויר לא מתעדכן"></label>
+  <label><span id="bugtl">מה הבעיה?</span><input id="bugt" maxlength="150" placeholder="למשל: מזג האוויר לא מתעדכן"></label>
   <label>פרטים (לא חובה)<textarea id="bugd" rows="3" maxlength="1000" placeholder="מה עשיתם, מה ציפיתם שיקרה ומה קרה בפועל"></textarea></label>
+  <p class="bugcount" id="bugcount" aria-live="polite"></p>
   <p class="bugctx">לשונית: <b id="bugtab"></b> · הגרסה, הטלפון והשעה מצורפים אוטומטית.</p>
   <div class="err" id="bugerr" role="alert"></div>
   <div class="btns"><button type="button" id="bugcancel">סגירה</button><button type="submit" class="go">שמירת הטיקט</button></div>
@@ -89,6 +93,8 @@ async function sendBug(ev) {
 </form></div>`);
   $("#bugfab").onclick = openBugSheet;
   document.querySelectorAll(".bugkind button").forEach(b => b.onclick = () => { setBugKind(b.dataset.k); $("#bugerr").textContent = ""; });
+  const cnt = () => { const t = $("#bugt").value.length, d = $("#bugd").value.length; $("#bugcount").textContent = `כותרת ${t}/150 · פרטים ${d}/1000`; $("#bugcount").classList.toggle("near", t > 130 || d > 900); };
+  $("#bugt").addEventListener("input", cnt); $("#bugd").addEventListener("input", cnt); cnt();
   $("#bugcancel").onclick = () => $("#bugsheet").hidden = true;
   $("#bugsheet").onclick = e => { if (e.target.id === "bugsheet") $("#bugsheet").hidden = true; };
   $("#bugform").onsubmit = sendBug;
