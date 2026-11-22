@@ -44,7 +44,12 @@ function drawBugList() {
   if (!all.length) { el.innerHTML = `<p>אין טיקטים פתוחים 🎉</p>`; return; }
   const lab = { open: ["🔴", "פתוח"], fixed: ["✅", "תוקן"], queued: ["⏳", "ממתין לאינטרנט, יישמר אוטומטית"], info: ["🟡", "המפתח צריך עוד פרטים"], notabug: ["🙅", "לא באג, לפי המפתח"], wont: ["⚪", "לא יתוקן"] };
   all.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
-  el.innerHTML = all.map(b => { let [i, l] = lab[b.s] || lab.open; if (b.k === "feature" && b.s === "fixed") l = "נוסף"; const kk = b.k === "feature" ? "✨ פיצ'ר" : b.k === "bug" ? "🐞 באג" : ""; return `<li><div><b>${i} ${esc(b.t)}</b><span class="bmeta">${kk ? kk + " · " : ""}#${esc(b.id)} · נפתח ע"י <b>${esc(b.by)}</b> · ${l}</span>${b.r ? `<span class="bdev">👨‍💻 המפתח: ${esc(b.r)}</span>` : ""}${b.fix ? `<span class="bfix">🔧 ${esc(b.fix)}</span>` : ""}</div></li>`; }).join("");
+  /* Collapsed: title + status. Tap to open details, the developer's reply and the fix. Open state survives refreshes. */
+  const open = drawBugList.open || (drawBugList.open = new Set());
+  el.querySelectorAll("details").forEach(d => d.open ? open.add(d.dataset.bid) : open.delete(d.dataset.bid));
+  el.innerHTML = all.map(b => { let [i, l] = lab[b.s] || lab.open; if (b.k === "feature" && b.s === "fixed") l = "נוסף"; const kk = b.k === "feature" ? "✨ פיצ'ר" : b.k === "bug" ? "🐞 באג" : "";
+    const body = `${b.d ? `<span class="bdesc">${esc(b.d)}</span>` : ""}${b.r ? `<span class="bdev">👨‍💻 המפתח: ${esc(b.r)}</span>` : ""}${b.fix ? `<span class="bfix">🔧 ${esc(b.fix)}</span>` : ""}${!b.d && !b.r && !b.fix ? `<span class="bmeta">עוד אין תגובה מהמפתח.</span>` : ""}`;
+    return `<li><details data-bid="${esc(b.id)}"${open.has(b.id) ? " open" : ""}><summary><b>${i} ${esc(b.t)}</b><span class="bmeta">${kk ? kk + " · " : ""}נפתח ע"י <b>${esc(b.by)}</b> · ${l}${b.r ? " · 💬" : ""}</span></summary><div class="bbody">${body}<span class="bmeta">#${esc(b.id)}</span></div></details></li>`; }).join("");
 }
 let bugKind = "";
 function setBugKind(k) {

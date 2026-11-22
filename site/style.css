@@ -385,3 +385,9 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 #storyb p.reading,.story h3.reading{background:color-mix(in srgb,var(--sea) 16%,transparent);outline:2px solid color-mix(in srgb,var(--sea) 30%,transparent);outline-offset:2px}
 .story-hint{font-size:12.5px;color:var(--muted);margin:4px 0 0}
 .bugsheet .bugcount{font-size:12.5px;color:var(--muted)}.bugsheet .bugcount.near{color:var(--bridge);font-weight:600}
+.buglist details summary{list-style:none;cursor:pointer;display:grid;gap:2px;padding-inline-end:22px;position:relative}
+.buglist details summary::-webkit-details-marker{display:none}
+.buglist details summary::after{content:"▼";position:absolute;inset-inline-end:0;top:2px;font-size:11px;color:var(--muted);transition:transform .2s}
+.buglist details[open] summary::after{transform:rotate(180deg)}
+.buglist .bbody{display:grid;gap:6px;margin-top:8px}
+.buglist .bdesc{font-size:13.5px}
