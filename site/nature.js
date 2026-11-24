@@ -45,7 +45,7 @@ const natDev = (() => { let d = store.get("natdev", ""); if (!d) { d = Math.rand
 const natKid = () => { const k = store.get("naturekid", -1); return k >= 0 && k < KIDS.length ? k : -1; };
 let NATIDX = { photos: [], deleted: [] }, NATLIVE = {}, NATDEL = new Set(store.get("natdel", [])), natOpenItem = store.get("natopen", -1);
 const NAT_RE = /^n(\d+)_(\d+)_([0-9a-z]+)_([0-9a-z]+)\.jpg$/;
-function natParse(file, src) { const m = NAT_RE.exec(file || ""); if (!m) return null; return { file, item: +m[1], kid: +m[2], at: parseInt(m[3], 36), dev: m[4], src }; }
+function natParse(file, src) { const m = NAT_RE.exec(file || ""); if (!m) return null; return { file, item: +m[1], kid: +m[2], at: parseInt(m[3], 36), dev: m[4], src, exp: 0 }; }
 
 /* --- small IndexedDB store for photos waiting to upload / my own photos (localStorage is too small for images) --- */
 const natDB = new Promise(res => { try { const r = indexedDB.open("natphotos", 1); r.onupgradeneeded = () => r.result.createObjectStore("p", { keyPath: "file" }); r.onsuccess = () => res(r.result); r.onerror = () => res(null); } catch (e) { res(null); } });
@@ -60,13 +60,14 @@ async function natShrink(file) {
   return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error("toBlob")), "image/jpeg", 0.8));
 }
 async function natUpload(rec) {
+  if (!rec || !NAT_RE.test(rec.file || "")) return false;   // never send a photo without a valid name
   try { const r = await fetch(NAT_URL, { method: "PUT", headers: { Filename: rec.file, "Content-Type": "image/jpeg" }, body: rec.blob }); if (!r.ok) return false; rec.pending = false; await natPut({ file: rec.file, blob: rec.blob, pending: false }); return true; } catch (e) { return false; }
 }
 async function natFlush() {
   if (natFlush.busy || !navigator.onLine) return; natFlush.busy = true;
   try { for (const f of Object.keys(NATLOCAL)) { const rec = NATLOCAL[f]; if (rec.pending) { const ok = await natUpload(rec); if (ok && view === "nature") natRender(); } } } finally { natFlush.busy = false; }
 }
-async function natLoadLocal() { const all = (await natAll()) || []; all.forEach(r => { if (!NATLOCAL[r.file]) NATLOCAL[r.file] = { blob: r.blob, url: URL.createObjectURL(r.blob), pending: !!r.pending }; }); }
+async function natLoadLocal() { const all = (await natAll()) || []; all.forEach(r => { if (!NATLOCAL[r.file]) NATLOCAL[r.file] = { file: r.file, blob: r.blob, url: URL.createObjectURL(r.blob), pending: !!r.pending }; }); }
 
 /* --- what everybody has uploaded: repo index (permanent) + live inbox (last hours) + my own phone --- */
 function natPhotos() {
@@ -81,7 +82,7 @@ function natMerge(list) {
   let changed = false;
   list.forEach(m => {
     if (m.event !== "message") return;
-    if (m.attachment && m.attachment.name) { const p = natParse(m.attachment.name, m.attachment.url); if (p && !NATLIVE[p.file]) { NATLIVE[p.file] = p; changed = true; } }
+    if (m.attachment && m.attachment.name) { const p = natParse(m.attachment.name, m.attachment.url); if (p) { p.exp = m.attachment.expires || 0; if (!NATLIVE[p.file] || p.exp > NATLIVE[p.file].exp) { NATLIVE[p.file] = p; changed = true; } } }
     else if (typeof m.message === "string" && m.message.startsWith("del ")) { const f = m.message.slice(4).trim(); if (!NATDEL.has(f)) { NATDEL.add(f); store.set("natdel", [...NATDEL]); changed = true; } }
   });
   if (changed && view === "nature") { clearTimeout(natMerge.t); natMerge.t = setTimeout(() => { if (view === "nature") natRender(); }, 150); }
@@ -95,6 +96,11 @@ async function natSync() {
     // my photos that the repo now has no longer need to live on the phone
     const have = new Set((NATIDX.photos || []).map(p => p.file));
     for (const f of Object.keys(NATLOCAL)) if (have.has(f) && !NATLOCAL[f].pending) { URL.revokeObjectURL(NATLOCAL[f].url); delete NATLOCAL[f]; natDelDb(f); }
+    /* Safety net: a photo that is still on this phone but is in neither the repo nor a live (unexpired) inbox file gets sent again.
+       This recovers photos the inbox dropped before the 15-minute copy to the repo ran. Only after a successful read of both lists. */
+    if (r.ok) for (const f of Object.keys(NATLOCAL)) { const rec = NATLOCAL[f], live = NATLIVE[f];
+      if (!have.has(f) && !rec.pending && !NATDEL.has(f) && (!live || (live.exp && live.exp * 1000 < Date.now()))) rec.pending = true; }
+    natFlush();
   } catch (e) { } finally { natSync.busy = false; if (view === "nature") natRender(); }
 }
 let natES = null;
