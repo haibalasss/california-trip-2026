@@ -156,7 +156,7 @@ setInterval(() => { if (view !== "nature") return; const c2 = document.getElemen
 function natViewer(file) {
   const p = natPhotos().find(x => x.file === file); if (!p) return;
   let v = document.getElementById("natview");
-  if (!v) { document.body.insertAdjacentHTML("beforeend", `<div class="natview" id="natview" hidden><div class="natvbar"><button class="btn" id="natvclose" type="button">✕ סגירה</button><button class="btn" id="natvdel" type="button">🗑️ מחיקה</button></div><img id="natvimg" alt=""><p id="natvcap"></p><p id="natvrev" class="natvrev"></p></div>`); v = document.getElementById("natview");
+  if (!v) { document.body.insertAdjacentHTML("beforeend", `<div class="natview" id="natview" hidden><div class="natvbar"><button class="btn" id="natvclose" type="button">✕ סגירה</button><button class="btn" id="natvdel" type="button">🗑️ מחיקה</button></div><img id="natvimg" alt=""><div class="natvtext"><p id="natvcap"></p><p id="natvrev" class="natvrev"></p></div></div>`); v = document.getElementById("natview");
     document.getElementById("natvclose").onclick = () => v.hidden = true; v.onclick = e => { if (e.target === v) v.hidden = true; }; }
   document.getElementById("natvimg").src = p.src; const rv = natResultsOpen() ? natRev(p.file) : null;
   document.getElementById("natvcap").textContent = `${HUNT[p.item][0]} ${HUNT[p.item][1]} · צילם/ה: ${KIDS[p.kid] || ""}` + (rv ? ` · ⭐ ${natSc(rv.s)} מתוך ${HUNT[p.item][2]}` : "");

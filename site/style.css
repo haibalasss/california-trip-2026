@@ -431,9 +431,16 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .nat .natadd{justify-self:start}
 .nat.locked .gcd{display:grid;justify-items:center;gap:6px;padding:26px 12px;border:1px dashed var(--line);border-radius:var(--r);background:var(--surface);text-align:center}
 .nat.locked .glock{font-size:28px}.nat.locked .gcd b{font-family:var(--f-display);font-size:clamp(44px,15vw,72px);line-height:1;font-variant-numeric:tabular-nums}.nat.locked .gcd span:last-child{color:var(--muted);font-size:15px}
-.natview{position:fixed;inset:0;z-index:40;background:rgba(5,15,20,.94);display:grid;grid-template-rows:auto 1fr auto;gap:10px;padding:12px;justify-items:center}
-.natview .natvbar{display:flex;gap:10px;justify-self:stretch;justify-content:space-between}.natview img{max-width:100%;max-height:100%;object-fit:contain;align-self:center;border-radius:8px}.natview p{margin:0;color:#fff;font-size:16px;font-weight:600;text-align:center}
+
 .nat .natres{margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}.nat .natres h3{margin:0 0 6px;font-size:17px}
 .nat .natres .gcd{display:grid;justify-items:center;gap:4px;padding:14px 0;text-align:center}.nat .natres .gcd b{font-family:var(--f-display);font-size:clamp(36px,12vw,56px);line-height:1;font-variant-numeric:tabular-nums}.nat .natres .gcd span{color:var(--muted);font-size:14px}
 .nat .nattable{width:100%;border-collapse:collapse;font-size:16px}.nat .nattable th,.nat .nattable td{padding:8px 6px;text-align:start;border-bottom:1px solid var(--line)}.nat .nattable th{font-size:13px;color:var(--muted);font-weight:600}.nat .nattable tr:first-child td{font-weight:700}
 .natview .natvrev{color:#fff;font-weight:400;font-size:17px;line-height:1.45;max-width:520px}
+
+/* photo viewer: the picture shrinks to leave room, the caption and the comment are always visible (tall photos used to push them off screen) */
+.natview{position:fixed;inset:0;z-index:40;background:rgba(5,15,20,.96);display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px;box-sizing:border-box;height:100vh;height:100dvh;overflow:hidden}
+.natview .natvbar{align-self:stretch;flex:none;display:flex;gap:10px;justify-content:space-between}
+.natview img{flex:1 1 0;min-height:0;width:100%;object-fit:contain;border-radius:8px}
+.natview .natvtext{flex:none;max-height:38%;overflow-y:auto;width:100%;max-width:560px;display:grid;gap:6px}
+.natview .natvtext p{margin:0;color:#fff;font-size:16px;font-weight:600;text-align:center}
+.natview .natvtext .natvrev{font-weight:400;font-size:17px;line-height:1.45}
