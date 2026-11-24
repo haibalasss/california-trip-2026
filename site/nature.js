@@ -134,7 +134,7 @@ function natResultsHTML() {
   return `<section class="natres"><h3>🏆 טבלת הניקוד</h3><p class="src">${esc(NATREV.rules || "")} כל תמונה קיבלה ציון ותגובה: לוחצים עליה כדי לקרוא.</p>
     <table class="nattable"><thead><tr><th>#</th><th>שם</th><th>דברים</th><th>⭐ ניקוד</th></tr></thead><tbody>${t.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.k)}</td><td>${r.found}</td><td><b>${natSc(r.total)}</b></td></tr>`).join("")}</tbody></table></section>`;
 }
-function renderNature() {
+function renderNatureHunt() {
   if (natLocked()) return `<section class="group nat locked"><h2>🌲 חיפוש הטבע ביוסמיטי</h2><div class="gcd"><span class="glock">🔒</span><b dir="ltr" id="natcd">${natFmt(NAT_OPEN - Date.now())}</b><span>עד שהמשחק נפתח, ב-14:30 שעון קליפורניה</span></div></section>`;
   const photos = natPhotos(), by = {}; photos.forEach(p => (by[p.item] = by[p.item] || []).push(p));
   const found = Object.keys(by).length, stars = Object.keys(by).reduce((s, i) => s + HUNT[i][2], 0), kid = natKid();
@@ -195,3 +195,6 @@ document.addEventListener("click", e => {
   await natLoadLocal(); natFlush(); setTimeout(natSync, 2500);
   const q = store.get("natdelq", []); if (q.length && navigator.onLine) { store.set("natdelq", []); q.forEach(f => fetch(NAT_URL, { method: "POST", body: "del " + f }).catch(() => { })); }
 })();
+
+/* Games tab = 17-Mile bingo (drive.js) on top, then the nature hunt */
+function renderNature() { return (typeof driveHTML === "function" ? driveHTML() : "") + renderNatureHunt(); }
