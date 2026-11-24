@@ -6,6 +6,7 @@ const NAT_TOPIC = "trip26-nature-bn7hcl0";
 const NAT_BASE = (location.hostname === "localhost" && new URLSearchParams(location.search).get("ntfy")) || "https://ntfy.sh/";
 const NAT_URL = NAT_BASE + NAT_TOPIC;
 const NAT_OPEN = Date.parse("2026-11-22T14:30:00-08:00");     // the hunt opens at 14:30 California time
+const NAT_RESULTS_AT = Date.parse("2026-11-23T20:00:00-08:00");   // scores and comments open at 20:00 California time
 const KIDS = ["רום", "מאור", "אדם", "ליאן", "פלג", "עדי", "אורי"];   // order is part of the file names: only ever append
 /* [emoji, name, stars, hint]. The position in this list is part of the file names: never reorder, only append. */
 const HUNT = [
@@ -43,7 +44,7 @@ const HUNT = [
 const NAT_STARS = HUNT.reduce((s, h) => s + h[2], 0);
 const natDev = (() => { let d = store.get("natdev", ""); if (!d) { d = Math.random().toString(36).slice(2, 6); store.set("natdev", d); } return d; })();
 const natKid = () => { const k = store.get("naturekid", -1); return k >= 0 && k < KIDS.length ? k : -1; };
-let NATIDX = { photos: [], deleted: [] }, NATLIVE = {}, NATDEL = new Set(store.get("natdel", [])), natOpenItem = store.get("natopen", -1);
+let NATREV = store.get("natrev", { photos: {} }), NATIDX = { photos: [], deleted: [] }, NATLIVE = {}, NATDEL = new Set(store.get("natdel", [])), natOpenItem = store.get("natopen", -1);
 const NAT_RE = /^n(\d+)_(\d+)_([0-9a-z]+)_([0-9a-z]+)\.jpg$/;
 function natParse(file, src) { const m = NAT_RE.exec(file || ""); if (!m) return null; return { file, item: +m[1], kid: +m[2], at: parseInt(m[3], 36), dev: m[4], src, exp: 0 }; }
 
@@ -91,6 +92,7 @@ async function natSync() {
   if (natSync.busy || !navigator.onLine) return; natSync.busy = true;
   try {
     try { const r = await fetch("nature/index.json?t=" + Date.now(), { cache: "no-store" }); if (r.ok) { const j = await r.json(); if (j && Array.isArray(j.photos)) { NATIDX = j; store.set("natidx", j); } } } catch (e) { }
+    try { const r = await fetch("nature/review.json?t=" + Date.now(), { cache: "no-store" }); if (r.ok) { const j = await r.json(); if (j && j.photos) { NATREV = j; store.set("natrev", j); } } } catch (e) { }
     const r = await fetch(NAT_URL + "/json?poll=1&since=all", { cache: "no-store" });
     if (r.ok) natMerge((await r.text()).split("\n").filter(Boolean).map(l => { try { return JSON.parse(l); } catch (e) { return {}; } }));
     // my photos that the repo now has no longer need to live on the phone
@@ -117,30 +119,48 @@ addEventListener("online", () => { natFlush(); natSync(); });
 const natLocked = () => Date.now() < NAT_OPEN;
 function natFmt(ms) { const t = Math.ceil(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60, p = n => String(n).padStart(2, "0"); return (h ? h + ":" + p(m) : m) + ":" + p(s); }
 const natStars = n => "⭐".repeat(n);
+const natResultsOpen = () => Date.now() >= NAT_RESULTS_AT;
+const natRev = f => (NATREV.photos || {})[f];
+const natSc = n => (n % 1 ? n.toFixed(1) : String(n));
+/* Per kid and per item only the best score counts, even if several photos were uploaded for the same item. */
+function natTable() {
+  const best = {};
+  natPhotos().forEach(p => { const r = natRev(p.file); if (!r) return; const k = KIDS[p.kid]; if (!k) return; (best[k] = best[k] || {}); best[k][p.item] = Math.max(best[k][p.item] || 0, r.s); });
+  return Object.entries(best).map(([k, it]) => ({ k, total: Object.values(it).reduce((a, b) => a + b, 0), found: Object.values(it).filter(v => v > 0).length })).sort((a, b) => b.total - a.total || b.found - a.found);
+}
+function natResultsHTML() {
+  if (!natResultsOpen()) return `<section class="natres"><h3>🏆 התוצאות והתגובות</h3><div class="gcd"><b dir="ltr" id="natcd2">${natFmt(NAT_RESULTS_AT - Date.now())}</b><span>עד שהתוצאות נפתחות, ב-20:00 שעון קליפורניה</span></div></section>`;
+  const t = natTable(); if (!t.length) return "";
+  return `<section class="natres"><h3>🏆 טבלת הניקוד</h3><p class="src">${esc(NATREV.rules || "")} כל תמונה קיבלה ציון ותגובה: לוחצים עליה כדי לקרוא.</p>
+    <table class="nattable"><thead><tr><th>#</th><th>שם</th><th>דברים</th><th>⭐ ניקוד</th></tr></thead><tbody>${t.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.k)}</td><td>${r.found}</td><td><b>${natSc(r.total)}</b></td></tr>`).join("")}</tbody></table></section>`;
+}
 function renderNature() {
   if (natLocked()) return `<section class="group nat locked"><h2>🌲 חיפוש הטבע ביוסמיטי</h2><div class="gcd"><span class="glock">🔒</span><b dir="ltr" id="natcd">${natFmt(NAT_OPEN - Date.now())}</b><span>עד שהמשחק נפתח, ב-14:30 שעון קליפורניה</span></div></section>`;
   const photos = natPhotos(), by = {}; photos.forEach(p => (by[p.item] = by[p.item] || []).push(p));
   const found = Object.keys(by).length, stars = Object.keys(by).reduce((s, i) => s + HUNT[i][2], 0), kid = natKid();
   return `<section class="group nat"><h2>🌲 חיפוש הטבע ביוסמיטי</h2>
     <p class="src">מוצאים, מצלמים ומעלים. כל תמונה מופיעה עם השם של מי שצילם, ולכולם יש גישה. ככל שהדבר קשה יותר, יש עליו יותר כוכבים.</p>
+    ${natResultsHTML()}
     <div class="natbar"><div class="natprog"><i style="width:${Math.round(found / HUNT.length * 100)}%"></i></div><b>נמצאו ${found} מתוך ${HUNT.length} · ⭐ ${stars} מתוך ${NAT_STARS}</b></div>
     <div class="natwho"><span>מי מצלם?</span>${KIDS.map((k, i) => `<button class="natkid" data-nk="${i}" aria-pressed="${i === kid}" type="button">${k}</button>`).join("")}</div>
     <details class="natrules"><summary>🧭 כללים קצרים לפני שיוצאים</summary><ul><li>מצלמים את הדבר, לא אנשים.</li><li>בעלי חיים מצלמים מרחוק: לפחות 45 מטר. מדובים וזאבים לפחות 90 מטר. לעולם לא מאכילים.</li><li>לא לוקחים כלום מהפארק: נוצות, אבנים, עלים וצמחים. רק תמונה.</li><li>ליד מפלים ובנהר לא נכנסים למים, והמים קרים מאוד.</li><li>לא עוצרים באמצע הכביש, ולא עוזבים את השביל.</li></ul></details>
     <ol class="nathunt">${HUNT.map((h, i) => { const ps = by[i] || [], open = natOpenItem === i;
       return `<li class="natitem${ps.length ? " got" : ""}"><button class="nathead" data-ni="${i}" aria-expanded="${open}" type="button"><span class="natem">${h[0]}</span><span class="natnm">${esc(h[1])}</span><span class="natst">${natStars(h[2])}</span><span class="natck">${ps.length ? "✅ " + ps.length : ""}</span></button>
-        ${open ? `<div class="natbody"><p>${esc(h[3])}</p>${ps.length ? `<div class="natgrid">${ps.map(p => `<button class="natph" data-nf="${esc(p.file)}" type="button"><img src="${esc(p.src)}" alt="${esc(h[1])}, צילם ${esc(KIDS[p.kid] || "")}" loading="lazy" decoding="async"><span>${esc(KIDS[p.kid] || "")}${p.pending ? " ⏳" : ""}</span></button>`).join("")}</div>` : `<p class="src">עוד לא מצאו. מי יהיה הראשון?</p>`}
+        ${open ? `<div class="natbody"><p>${esc(h[3])}</p>${ps.length ? `<div class="natgrid">${ps.map(p => `<button class="natph" data-nf="${esc(p.file)}" type="button"><img src="${esc(p.src)}" alt="${esc(h[1])}, צילם ${esc(KIDS[p.kid] || "")}" loading="lazy" decoding="async"><span>${esc(KIDS[p.kid] || "")}${p.pending ? " ⏳" : ""}${natResultsOpen() && natRev(p.file) ? ` · ⭐${natSc(natRev(p.file).s)}` : ""}</span></button>`).join("")}</div>` : `<p class="src">עוד לא מצאו. מי יהיה הראשון?</p>`}
           <button class="btn primary natadd" data-na="${i}" type="button">📸 צילמתי!</button></div>` : ""}</li>`; }).join("")}</ol></section>`;
 }
 function natRender() { if (view === "nature") render(); }
-setInterval(() => { if (view !== "nature") return; const el = document.getElementById("natcd"); if (!el) return; if (natLocked()) el.textContent = natFmt(NAT_OPEN - Date.now()); else { toast("🌲 חיפוש הטבע נפתח!"); render(); } }, 1000);
+setInterval(() => { if (view !== "nature") return; const c2 = document.getElementById("natcd2"); if (c2) { if (!natResultsOpen()) c2.textContent = natFmt(NAT_RESULTS_AT - Date.now()); else { toast("🏆 התוצאות נפתחו!"); render(); } } const el = document.getElementById("natcd"); if (!el) return; if (natLocked()) el.textContent = natFmt(NAT_OPEN - Date.now()); else { toast("🌲 חיפוש הטבע נפתח!"); render(); } }, 1000);
 
 /* --- photo viewer, upload, delete --- */
 function natViewer(file) {
   const p = natPhotos().find(x => x.file === file); if (!p) return;
   let v = document.getElementById("natview");
-  if (!v) { document.body.insertAdjacentHTML("beforeend", `<div class="natview" id="natview" hidden><div class="natvbar"><button class="btn" id="natvclose" type="button">✕ סגירה</button><button class="btn" id="natvdel" type="button">🗑️ מחיקה</button></div><img id="natvimg" alt=""><p id="natvcap"></p></div>`); v = document.getElementById("natview");
+  if (!v) { document.body.insertAdjacentHTML("beforeend", `<div class="natview" id="natview" hidden><div class="natvbar"><button class="btn" id="natvclose" type="button">✕ סגירה</button><button class="btn" id="natvdel" type="button">🗑️ מחיקה</button></div><img id="natvimg" alt=""><p id="natvcap"></p><p id="natvrev" class="natvrev"></p></div>`); v = document.getElementById("natview");
     document.getElementById("natvclose").onclick = () => v.hidden = true; v.onclick = e => { if (e.target === v) v.hidden = true; }; }
-  document.getElementById("natvimg").src = p.src; document.getElementById("natvcap").textContent = `${HUNT[p.item][0]} ${HUNT[p.item][1]} · צילם/ה: ${KIDS[p.kid] || ""}`;
+  document.getElementById("natvimg").src = p.src; const rv = natResultsOpen() ? natRev(p.file) : null;
+  document.getElementById("natvcap").textContent = `${HUNT[p.item][0]} ${HUNT[p.item][1]} · צילם/ה: ${KIDS[p.kid] || ""}` + (rv ? ` · ⭐ ${natSc(rv.s)} מתוך ${HUNT[p.item][2]}` : "");
+  document.getElementById("natvrev").textContent = rv ? rv.c : (natResultsOpen() ? "עוד לא נבדקה" : "");
   document.getElementById("natvdel").onclick = () => natDelete(p); v.hidden = false;
 }
 async function natDelete(p) {
