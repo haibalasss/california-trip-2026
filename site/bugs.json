@@ -162,5 +162,33 @@
   "w": "384x748",
   "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
   "s": "open"
+ },
+ {
+  "id": "11232050v5",
+  "k": "bug",
+  "by": "עדי",
+  "t": "כשגוללים בתמונות זה כותב את המספרים הפוך",
+  "d": "לדוגמה: זה כותב 6/1 (6 מתוך 1 במקום 1 מתוך 6)",
+  "at": "2026-11-23T20:50:20.343Z",
+  "tab": "ימים",
+  "fam": "a",
+  "ver": "2026.11.22-11",
+  "w": "385x691",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+  "s": "open"
+ },
+ {
+  "id": "11232050vx",
+  "k": "bug",
+  "by": "עדי",
+  "t": "כשגוללים בתמונות זה כותב את המספרים הפוך",
+  "d": "לדוגמה: זה כותב 6/1 (6 מתוך 1 במקום 1 מתוך 6)",
+  "at": "2026-11-23T20:50:22.033Z",
+  "tab": "ימים",
+  "fam": "a",
+  "ver": "2026.11.22-11",
+  "w": "385x691",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+  "s": "open"
  }
 ]
