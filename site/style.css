@@ -445,3 +445,8 @@ details.more[open] > :not(summary),details.alertbox[open] > :not(summary){margin
 .natview .natvtext p{margin:0;color:#fff;font-size:16px;font-weight:600;text-align:center}
 .natview .natvtext .natvrev{font-weight:400;font-size:17px;line-height:1.45}
 .daylog{font-size:15px;margin:10px 0}
+.buglist .bnum{display:inline-block;min-width:2.2em;padding:0 6px;border-radius:999px;background:var(--sea-soft);font-size:13px;text-align:center}
+.drvfx{position:fixed;inset:0;width:100%;height:100%;z-index:60;pointer-events:none}
+.drvfxmsg{background:radial-gradient(circle at center,rgba(0,0,0,.6),transparent 70%);position:fixed;inset:0;z-index:61;display:grid;place-content:center;gap:6px;text-align:center;pointer-events:none;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.8);animation:drvpop .6s ease-out}
+.drvfxmsg b{font-family:var(--f-display);font-size:clamp(40px,14vw,76px);line-height:1.05}.drvfxmsg span{font-size:clamp(22px,7vw,34px);font-weight:700}
+@keyframes drvpop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}

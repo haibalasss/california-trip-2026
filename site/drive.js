@@ -68,6 +68,27 @@ function drvAskPw() {
 }
 document.addEventListener("click", e => {
   const c = e.target.closest(".bcell[data-d]");
-  if (c) { const i = +c.dataset.d, m = drvMarks(fam), before = drvLines(m); drvAdd({ k: "mark", fam, i, on: !m[i] }); if (drvLines(drvMarks(fam)) > before) toast("🎉 בינגו!"); render(); return; }
+  if (c) { const i = +c.dataset.d, m = drvMarks(fam), before = drvLines(m); const had = Object.values(m).filter(Boolean).length; drvAdd({ k: "mark", fam, i, on: !m[i] });
+    const nm = drvMarks(fam), now = Object.values(nm).filter(Boolean).length;
+    if (now === DRV.length && had < DRV.length) drvFireworks(true);                // the whole board: big fireworks
+    else if (drvLines(nm) > before) { toast("🎉 בינגו!"); drvFireworks(false); }     // a line: a short colourful burst
+    render(); return; }
   if (e.target.closest("#drvreset")) drvAskPw();
 });
+
+/* Fireworks (ticket 17): a canvas on top of the screen that removes itself. Skipped when the phone asks for less motion. */
+function drvFireworks(big) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { if (big) toast("🎆 כל הכבוד! גמרתם את הבינגו!"); return; }
+  const cv = document.createElement("canvas"); cv.className = "drvfx"; cv.width = innerWidth; cv.height = innerHeight; document.body.append(cv);
+  let msg = null; if (big) { msg = document.createElement("div"); msg.className = "drvfxmsg"; msg.innerHTML = "<b>🎆 כל הכבוד!</b><span>גמרתם את הבינגו!</span>"; document.body.append(msg); }
+  const g = cv.getContext("2d"), cols = ["#ff3b6b", "#ffb400", "#3be08f", "#37a8ff", "#b46bff", "#ffffff"], P = [], dur = big ? 5200 : 1600, t0 = performance.now();
+  const burst = (x, y, n) => { const c = cols[Math.floor(Math.random() * cols.length)]; for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, v = 1.5 + Math.random() * (big ? 5 : 3.5); P.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, c: Math.random() < .3 ? cols[Math.floor(Math.random() * cols.length)] : c }); } };
+  let last = 0;
+  (function frame(t) {
+    const e = t - t0; if (e > dur) { cv.remove(); if (msg) msg.remove(); return; }
+    if (e - last > (big ? 380 : 250) && e < dur - 900) { last = e; burst(innerWidth * (.15 + Math.random() * .7), innerHeight * (.12 + Math.random() * .45), big ? 70 : 38); }
+    g.clearRect(0, 0, cv.width, cv.height);
+    for (let i = P.length - 1; i >= 0; i--) { const q = P[i]; q.x += q.vx; q.y += q.vy; q.vy += .045; q.vx *= .99; q.life -= .012; if (q.life <= 0) { P.splice(i, 1); continue; } g.globalAlpha = Math.max(q.life, 0); g.fillStyle = q.c; g.beginPath(); g.arc(q.x, q.y, big ? 3 : 2.5, 0, 6.283); g.fill(); }
+    g.globalAlpha = 1; requestAnimationFrame(frame);
+  })(t0);
+}
