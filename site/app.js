@@ -371,6 +371,7 @@ function renderDay() {
    <section class="hero${heroEnter ? " enter" : ""}" aria-label="${esc(SCENES[d.scene].label)}">${sceneSVG(d.scene)}<div class="txt">
      <span class="place">${esc(SCENES[d.scene].label)}</span><h2>${esc(d.title)}</h2>
      <span class="meta"><span>יום ${dayIdx + 1} מתוך ${ds.length} · ${d.dow}, ${dateStr}</span><span>לינה: <b>${esc(d.sleep)}</b></span></span></div></section>
+   ${d.log ? `<div class="prep daylog"><b>${esc(d.log)}</b></div>` : ""}
    ${remindHTML(d)}
    ${wxHTML(d)}
    ${showAlerts && alerts.length ? `<details class="alertbox" id="alerts" open><summary>התראות (${alerts.length})</summary><div class="alerts">${alerts.map(a => `<div class="alert ${a.lvl}"><span class="dot"></span><div>${a.t}</div></div>`).join("")}</div></details>` : ""}
@@ -378,7 +379,7 @@ function renderDay() {
    <section class="route"><div class="route-h"><h3 class="sect-title">מסלול היום</h3>
      <div class="actions"><button class="btn" id="mapbtn" type="button">🗺️ מפה</button><a class="btn" href="${routeURL(d)}" target="_blank" rel="noopener">מסלול בגוגל מפות</a></div></div>
      <div id="map" class="map" hidden></div>${stopsHTML(d)}
-     ${prep ? `<div class="prep"><b>להכנה:</b> ${esc(prep)}</div>` : ""}${d.log ? `<div class="prep daylog">${esc(d.log)}</div>` : ""}</section>
+     ${prep ? `<div class="prep"><b>להכנה:</b> ${esc(prep)}</div>` : ""}</section>
    ${d.planB ? `<details class="more" id="pb-${d.d}"><summary>תוכנית ב'</summary><div class="note">${d.planB}</div></details>` : ""}
    ${roads ? `<div class="roads">${roads.map(([t, u]) => `<a class="btn" href="${u}" target="_blank" rel="noopener">🚧 ${esc(t)}</a>`).join("")}</div>` : ""}
    ${items.length ? `<details class="more" id="bk-${d.d}"><summary>הזמנות ופרטים (${items.length})</summary><div class="cards">${items.map(itemHTML).join("")}</div></details>` : ""}
@@ -392,7 +393,7 @@ function renderDocs() {
     DOCS.map(g => `<section class="group"><h2>${g.g}</h2>${g.rows.map(([l, c, s, doc]) => `<div class="row"><span class="l">${esc(l)}</span>${secret(c)}<span class="s">${esc(s)}${doc ? ` · <button class="linkbtn" data-doc="${doc}">📄 פתיחת הקובץ</button>` : ""}</span></div>`).join("")}</section>`).join("") +
     `<p class="src">לחיצה על מספר מעתיקה אותו. קודי ה-PIN של Booking נמצאים רק במיילים ובאפליקציה.</p>`;
 }
-const APP_VERSION = "2026.11.24-2";
+const APP_VERSION = "2026.11.25-1";
 async function forceUpdate() {
   toast("מעדכן…");
   try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k);
